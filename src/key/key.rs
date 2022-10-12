@@ -1,4 +1,3 @@
-// NOTE: This is 100% copy and pasted from cosm-orc
 use cosmrs::crypto::secp256k1;
 use cosmrs::{bip32, AccountId};
 use keyring::Entry;
@@ -48,7 +47,7 @@ pub struct KeyringParams {
 
 impl TryFrom<&SigningKey> for secp256k1::SigningKey {
     type Error = ChainError;
-    fn try_from(signer: &SigningKey) -> Result<secp256k1::SigningKey, ChainError> {
+    fn try_from(signer: &SigningKey) -> Result<secp256k1::SigningKey, Self::Error> {
         match &signer.key {
             Key::Mnemonic(phrase) => mnemonic_to_signing_key(phrase),
             Key::Keyring(params) => {

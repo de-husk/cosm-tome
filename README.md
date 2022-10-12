@@ -1,8 +1,6 @@
 # Cosm-Tome
 
-🔮 🧙 🔮
-
-Easy to use, high level rust Cosmos SDK client library.
+Easy to use, high level Cosmos SDK rust client library.
 
 ## Inspiration
 

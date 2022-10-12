@@ -50,25 +50,25 @@ pub struct CosmTome<T: CosmosClient> {
 
 impl<T: CosmosClient> CosmTome<T> {
     /// General usage CosmClient constructor accepting any client that impls `CosmosClient` trait
-    pub fn new(cfg: ChainConfig, client: T) -> Result<Self, ()> {
-        Ok(Self {
+    pub fn new(cfg: ChainConfig, client: T) -> Self {
+        Self {
             cfg,
             client,
             wasm: Cosmwasm {},
             auth: Auth {},
-        })
+        }
     }
 
-    pub fn with_tendermint_rpc(cfg: ChainConfig) -> Result<CosmTome<TendermintRPC>, ()> {
+    pub fn with_tendermint_rpc(cfg: ChainConfig) -> Result<CosmTome<TendermintRPC>, ChainError> {
         Ok(CosmTome {
-            client: TendermintRPC::new(&cfg.rpc_endpoint.clone()),
+            client: TendermintRPC::new(&cfg.rpc_endpoint.clone())?,
             cfg,
             wasm: Cosmwasm {},
             auth: Auth {},
         })
     }
 
-    pub fn with_cosmos_grpc(cfg: ChainConfig) -> Result<CosmTome<CosmosgRPC>, ()> {
+    pub fn with_cosmos_grpc(cfg: ChainConfig) -> Result<CosmTome<CosmosgRPC>, ChainError> {
         Ok(CosmTome {
             client: CosmosgRPC::new(cfg.grpc_endpoint.clone()),
             cfg,

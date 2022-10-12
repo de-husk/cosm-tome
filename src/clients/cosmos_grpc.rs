@@ -1,12 +1,13 @@
 use async_trait::async_trait;
 use cosmos_sdk_proto::cosmos::tx::v1beta1::service_client::ServiceClient;
 use cosmos_sdk_proto::cosmos::tx::v1beta1::{BroadcastMode, BroadcastTxRequest, SimulateRequest};
+use cosmrs::tendermint::abci::Code;
 use tonic::codec::ProstCodec;
 
 use cosmos_sdk_proto::traits::Message;
 use cosmrs::tx::Raw;
 
-use crate::chain::model::GasInfo;
+use crate::chain::model::{ChainResponse, GasInfo};
 use crate::chain::{error::ChainError, model::ChainTxResponse};
 
 use super::client::CosmosClient;
@@ -26,28 +27,31 @@ impl CosmosgRPC {
         &self,
         req: impl tonic::IntoRequest<I>,
         path: String,
-    ) -> Result<O, tonic::Status>
+    ) -> Result<O, ChainError>
     where
         I: Message + 'static,
         O: Message + Default + 'static,
     {
-        let conn = tonic::transport::Endpoint::new(self.grpc_endpoint.clone())
-            .unwrap()
+        let conn = tonic::transport::Endpoint::new(self.grpc_endpoint.clone())?
             .connect()
-            .await
-            .unwrap();
+            .await?;
 
         let mut client = tonic::client::Grpc::new(conn);
 
-        client.ready().await.unwrap();
+        client.ready().await?;
 
         // NOTE: `I` and `O` in ProstCodec have static lifetime bounds:
         let codec: ProstCodec<I, O> = tonic::codec::ProstCodec::default();
         let res = client
-            .unary(req.into_request(), path.parse().unwrap(), codec)
+            .unary(
+                req.into_request(),
+                path.parse()
+                    .map_err(|_| ChainError::QueryPath { url: path })?,
+                codec,
+            )
             .await;
 
-        Ok(res.unwrap().into_inner())
+        Ok(res?.into_inner())
     }
 }
 
@@ -59,60 +63,56 @@ impl CosmosClient for CosmosgRPC {
         I: Message + 'static,
         O: Message + Default + 'static,
     {
-        let res = self.grpc_call::<I, O>(msg, path.to_string()).await.unwrap();
+        let res = self.grpc_call::<I, O>(msg, path.to_string()).await?;
 
         Ok(res)
     }
 
     #[allow(deprecated)]
     async fn simulate_tx(&self, tx: &Raw) -> Result<GasInfo, ChainError> {
-        let mut client = ServiceClient::connect(self.grpc_endpoint.clone())
-            .await
-            .unwrap();
+        let mut client = ServiceClient::connect(self.grpc_endpoint.clone()).await?;
 
         let req = SimulateRequest {
             tx: None,
-            tx_bytes: tx
-                .to_bytes()
-                //.map_err(ClientError::proto_encoding)?,
-                .unwrap(),
+            tx_bytes: tx.to_bytes().map_err(ChainError::proto_encoding)?,
         };
 
         let gas_info = client
             .simulate(req)
             .await
-            // .map_err(|e| ClientError::CosmosSdk {
-            //     res: ChainResponse {
-            //         code: Code::Err(e.code() as u32),
-            //         log: e.message().to_string(),
-            //         ..Default::default()
-            //     },
-            // })?
-            .unwrap()
+            .map_err(|e| ChainError::CosmosSdk {
+                res: ChainResponse {
+                    code: Code::Err(e.code() as u32),
+                    log: e.message().to_string(),
+                    ..Default::default()
+                },
+            })?
             .into_inner()
             .gas_info
-            .unwrap();
+            .unwrap(); // TODO: Dont unwrap. Why is this even optional??
 
         Ok(gas_info.into())
     }
 
     async fn broadcast_tx(&self, tx: &Raw) -> Result<ChainTxResponse, ChainError> {
-        let mut client = ServiceClient::connect(self.grpc_endpoint.clone())
-            .await
-            .unwrap();
+        let mut client = ServiceClient::connect(self.grpc_endpoint.clone()).await?;
 
         let req = BroadcastTxRequest {
-            tx_bytes: tx.to_bytes().unwrap(),
+            tx_bytes: tx.to_bytes().map_err(ChainError::proto_encoding)?,
             // TODO: Allow the client to set the broadcast MODE
             mode: BroadcastMode::Block.into(),
         };
 
-        let res = client.broadcast_tx(req).await.unwrap().into_inner();
+        let res = client.broadcast_tx(req).await?.into_inner();
 
-        println!("{:?}", res);
+        // TODO: I assume res.tx_response is None if mode is ASYNC
+        // for now, im unwrapping here
+        let res: ChainTxResponse = res.tx_response.unwrap().try_into()?;
 
-        // TODO: Handle errors and return the proper ChainErrors
+        if res.res.code.is_err() {
+            return Err(ChainError::CosmosSdk { res: res.res });
+        }
 
-        Ok(res.tx_response.unwrap().into())
+        Ok(res)
     }
 }

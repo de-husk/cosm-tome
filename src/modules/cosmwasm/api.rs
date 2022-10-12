@@ -1,14 +1,10 @@
-use std::str::FromStr;
-
 use cosmrs::tx::Msg;
 use serde::Serialize;
 
 use cosmos_sdk_proto::cosmwasm::wasm::v1::{
     AccessConfig, QuerySmartContractStateRequest, QuerySmartContractStateResponse,
-}; // TODO: make my own type in chain::model
+};
 use cosmrs::cosmwasm::{MsgExecuteContract, MsgInstantiateContract, MsgStoreCode};
-use cosmrs::tendermint::abci::tag::Key;
-use cosmrs::tendermint::abci::Event;
 
 use crate::chain::error::ChainError;
 use crate::chain::tx::sign_tx;
@@ -22,8 +18,6 @@ use super::{
     model::{InstantiateResponse, StoreCodeResponse},
 };
 
-// TODO: Dont unwrap in this file
-
 pub struct Cosmwasm {}
 
 impl Cosmwasm {
@@ -32,7 +26,7 @@ impl Cosmwasm {
         client: &CosmTome<T>,
         payload: Vec<u8>,
         key: &SigningKey,
-        instantiate_perms: Option<AccessConfig>,
+        instantiate_perms: Option<AccessConfig>, // TODO: make my own type in chain::model
         simulate: bool,
     ) -> Result<StoreCodeResponse, CosmwasmError> {
         let account_id = key.to_account(&client.cfg.prefix)?;
@@ -52,14 +46,10 @@ impl Cosmwasm {
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
-        let code_id = find_event(&res.events, "store_code")
-            .unwrap() // TODO: Dont unwrap
-            .attributes
-            .iter()
-            .find(|a| a.key == Key::from_str("code_id").unwrap())
-            .unwrap()
+        let code_id = res
+            .find_event_tag("store_code".to_string(), "code_id".to_string())
+            .ok_or(CosmwasmError::MissingEvent)?
             .value
-            .as_ref()
             .parse::<u64>()
             .unwrap();
 
@@ -102,15 +92,10 @@ impl Cosmwasm {
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
-        // TODO: Make a better more generic unified response type from all of the clients instead of just making all clients conform to this tendermint Events meme
-        let addr = find_event(&res.events, "instantiate")
-            .unwrap() // TODO: Dont unwrap
-            .attributes
-            .iter()
-            .find(|a| a.key == Key::from_str("_contract_address").unwrap())
-            .unwrap()
-            .value
-            .to_string();
+        let addr = res
+            .find_event_tag("instantiate".to_string(), "_contract_address".to_string())
+            .ok_or(CosmwasmError::MissingEvent)?
+            .value;
 
         Ok(InstantiateResponse {
             address: addr,
@@ -138,7 +123,9 @@ impl Cosmwasm {
 
         let msg = MsgExecuteContract {
             sender: account_id.clone(),
-            contract: address.parse().unwrap(),
+            contract: address
+                .parse()
+                .map_err(|_| CosmwasmError::ContractAddress { addr: address })?,
             msg: payload,
             funds: cosm_funds,
         }
@@ -161,6 +148,7 @@ impl Cosmwasm {
         let payload = serde_json::to_vec(msg).map_err(CosmwasmError::json)?;
 
         let req = QuerySmartContractStateRequest {
+            // NOTE: we are unwrapping an `std::convert::Infallible` error here
             address: address.parse().unwrap(),
             query_data: payload,
         };
@@ -187,14 +175,4 @@ impl Cosmwasm {
     // ) -> Result<MigrateResponse, ClientError> {
     //     todo!()
     // }
-}
-
-//  TODO: Make this more useful, and make this a method on the custom Event
-pub fn find_event(events: &Vec<Event>, key_name: &str) -> Option<Event> {
-    for event in events {
-        if event.type_str == key_name {
-            return Some(event.clone());
-        }
-    }
-    None
 }

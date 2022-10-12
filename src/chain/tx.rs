@@ -67,7 +67,9 @@ pub async fn simulate_tx<T: CosmosClient>(
     tx: Body,
     account: &Account,
 ) -> Result<Fee, ChainError> {
-    let denom: Denom = client.cfg.denom.parse().unwrap();
+    let denom: Denom = client.cfg.denom.parse().map_err(|_| ChainError::Denom {
+        name: client.cfg.denom.clone(),
+    })?;
 
     let auth_info =
         SignerInfo::single_direct(None, account.sequence).auth_info(Fee::from_amount_and_gas(
@@ -79,12 +81,12 @@ pub async fn simulate_tx<T: CosmosClient>(
         ));
 
     let tx_raw = TxRaw {
-        body_bytes: tx.into_bytes().unwrap(),
-        auth_info_bytes: auth_info.into_bytes().unwrap(),
+        body_bytes: tx.into_bytes().map_err(ChainError::proto_encoding)?,
+        auth_info_bytes: auth_info.into_bytes().map_err(ChainError::proto_encoding)?,
         signatures: vec![vec![]],
     };
 
-    let gas_info = client.client.simulate_tx(&tx_raw.into()).await.unwrap();
+    let gas_info = client.client.simulate_tx(&tx_raw.into()).await?;
 
     // TODO: clean up this gas conversion code to be clearer
     let gas_limit = (gas_info.gas_used as f64 * client.cfg.gas_adjustment).ceil();
