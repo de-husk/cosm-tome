@@ -6,10 +6,10 @@ use delegate::delegate;
 use serde::Serialize;
 
 use crate::chain::error::ChainError;
-use crate::chain::model::{ChainTxResponse, GasInfo};
+use crate::chain::model::{ChainTxResponse, GasInfo, PaginationRequest};
 use crate::chain::tx::TxOptions;
 use crate::modules::auth::api::Auth;
-use crate::modules::auth::model::AccountResponse;
+use crate::modules::auth::model::{AccountResponse, AccountsResponse, ParamsResponse};
 use crate::modules::cosmwasm::model::{ExecResponse, QueryResponse};
 use crate::{
     chain::model::Coin,
@@ -81,7 +81,22 @@ impl<T: CosmosClient> CosmTome<T> {
 
     delegate! {
         to self.auth {
-            pub async fn auth_query(&self, [&self], address: String) -> Result<AccountResponse, AccountError>;
+            pub async fn auth_query_account(
+                &self,
+                [&self],
+                address: String
+            ) -> Result<AccountResponse, AccountError>;
+
+            pub async fn auth_query_accounts(
+                &self,
+                [&self],
+                pagination: Option<PaginationRequest>
+            ) -> Result<AccountsResponse, AccountError>;
+
+            pub async fn auth_query_params(
+                &self,
+                [&self],
+            ) -> Result<ParamsResponse, AccountError>;
         }
         to self.wasm {
             pub async fn wasm_store(
