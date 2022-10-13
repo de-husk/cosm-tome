@@ -13,25 +13,50 @@ use cosmrs::{Coin, Denom};
 
 use super::error::ChainError;
 
+/// Options the user can set when executing txs on chain
+pub struct TxOptions {
+    /// The block height after which this transaction will not be processed by the chain
+    pub timeout_height: Option<u16>,
+
+    /// If set will use this fee, instead of the simulated gas price
+    pub fee: Option<Fee>,
+
+    /// An arbitrary memo to be added to the transaction
+    pub memo: Option<String>,
+    // TODO: Broadcast mode (block, async, etc)
+}
+
+impl Default for TxOptions {
+    fn default() -> Self {
+        Self {
+            fee: None,
+            timeout_height: Some(0),
+            memo: Some("Made with cosm-client".to_string()),
+        }
+    }
+}
+
 pub async fn sign_tx<T: CosmosClient>(
     client: &CosmTome<T>,
     msg: Any,
     key: &SigningKey,
-    fee: Option<Fee>,
     account_addr: String,
+    tx_options: &TxOptions,
 ) -> Result<Raw, AccountError> {
-    // TODO: Allow people to set (Fee, timeout_height, memo, simulate, etc) for each non,query tx
-    let timeout_height = 0u16;
-    let memo = "Made with cosm-client";
+    let timeout_height = tx_options.timeout_height.unwrap_or_default();
+    let memo = tx_options.memo.clone().unwrap_or_default();
 
     let tx = Body::new(vec![msg], memo, timeout_height);
 
     let account = client.auth_query(account_addr).await?.account;
 
-    let fee = if let Some(fee) = fee {
-        fee
+    // even if the user is supplying their own `Fee`, we will simulate the tx to ensure its valid
+    let sim_fee = simulate_tx(client, tx.clone(), &account).await?;
+
+    let fee = if let Some(fee) = &tx_options.fee {
+        fee.clone()
     } else {
-        simulate_tx(client, tx.clone(), &account).await?
+        sim_fee
     };
 
     // NOTE: if we are making requests in parallel with the same key, we need to serialize `account.sequence` to avoid errors
@@ -60,8 +85,6 @@ pub async fn sign_tx<T: CosmosClient>(
 
 // Sends tx with an empty public_key / signature, like they do in the cosmos-sdk:
 // https://github.com/cosmos/cosmos-sdk/blob/main/client/tx/tx.go#L133
-// https://github.com/cosmos/cosmos-sdk/blob/main/client/tx/factory.go#L359
-// https://github.com/cosmos/cosmos-sdk/blob/main/x/auth/tx/builder.go#L292
 pub async fn simulate_tx<T: CosmosClient>(
     client: &CosmTome<T>,
     tx: Body,

@@ -4,20 +4,23 @@ use serde::Serialize;
 use cosmos_sdk_proto::cosmwasm::wasm::v1::{
     AccessConfig, QuerySmartContractStateRequest, QuerySmartContractStateResponse,
 };
-use cosmrs::cosmwasm::{MsgExecuteContract, MsgInstantiateContract, MsgStoreCode};
+use cosmrs::cosmwasm::{
+    MsgExecuteContract, MsgInstantiateContract, MsgMigrateContract, MsgStoreCode,
+};
 
 use crate::chain::error::ChainError;
-use crate::chain::tx::sign_tx;
+use crate::chain::tx::{sign_tx, TxOptions};
 use crate::clients::client::CosmTome;
 
 use crate::{chain::model::Coin, clients::client::CosmosClient, key::key::SigningKey};
 
-use super::model::{ExecResponse, QueryResponse};
+use super::model::{ExecResponse, MigrateResponse, QueryResponse};
 use super::{
     error::CosmwasmError,
     model::{InstantiateResponse, StoreCodeResponse},
 };
 
+#[derive(Clone, Debug)]
 pub struct Cosmwasm {}
 
 impl Cosmwasm {
@@ -27,7 +30,7 @@ impl Cosmwasm {
         payload: Vec<u8>,
         key: &SigningKey,
         instantiate_perms: Option<AccessConfig>, // TODO: make my own type in chain::model
-        simulate: bool,
+        tx_options: &TxOptions,
     ) -> Result<StoreCodeResponse, CosmwasmError> {
         let account_id = key.to_account(&client.cfg.prefix)?;
 
@@ -35,14 +38,14 @@ impl Cosmwasm {
             sender: account_id.clone(),
             wasm_byte_code: payload,
             instantiate_permission: instantiate_perms
-                .map(|p| p.try_into())
+                .map(TryInto::try_into)
                 .transpose()
                 .map_err(|e| CosmwasmError::InstantiatePerms { source: e })?,
         }
         .to_any()
         .map_err(ChainError::proto_encoding)?;
 
-        let tx_raw = sign_tx(client, msg, key, None, account_id.to_string()).await?;
+        let tx_raw = sign_tx(client, msg, key, account_id.to_string(), tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
@@ -61,10 +64,11 @@ impl Cosmwasm {
         client: &CosmTome<T>,
         code_id: u64,
         msg: &S,
+        label: Option<String>,
         key: &SigningKey,
         admin: Option<String>,
         funds: Vec<Coin>,
-        simulate: bool,
+        tx_options: &TxOptions,
     ) -> Result<InstantiateResponse, CosmwasmError> {
         let payload = serde_json::to_vec(msg).map_err(CosmwasmError::json)?;
         let account_id = key.to_account(&client.cfg.prefix)?;
@@ -81,14 +85,14 @@ impl Cosmwasm {
                 .transpose()
                 .map_err(|_| CosmwasmError::AdminAddress)?,
             code_id,
-            label: Some("cosm-tome".to_string()), // TODO: Dont hardcode
+            label: label,
             msg: payload,
             funds: cosm_funds,
         }
         .to_any()
         .map_err(ChainError::proto_encoding)?;
 
-        let tx_raw = sign_tx(client, msg, key, None, account_id.to_string()).await?;
+        let tx_raw = sign_tx(client, msg, key, account_id.to_string(), tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
@@ -110,7 +114,7 @@ impl Cosmwasm {
         msg: &S,
         key: &SigningKey,
         funds: Vec<Coin>,
-        simulate: bool,
+        tx_options: &TxOptions,
     ) -> Result<ExecResponse, CosmwasmError> {
         let payload = serde_json::to_vec(msg).map_err(CosmwasmError::json)?;
 
@@ -132,7 +136,7 @@ impl Cosmwasm {
         .to_any()
         .map_err(ChainError::proto_encoding)?;
 
-        let tx_raw = sign_tx(client, msg, key, None, account_id.to_string()).await?;
+        let tx_raw = sign_tx(client, msg, key, account_id.to_string(), tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
@@ -164,15 +168,34 @@ impl Cosmwasm {
         Ok(QueryResponse { res: res.into() })
     }
 
+    pub async fn migrate<T: CosmosClient>(
+        &self,
+        client: &CosmTome<T>,
+        address: String,
+        new_code_id: u64,
+        payload: Vec<u8>,
+        key: &SigningKey,
+        tx_options: &TxOptions,
+    ) -> Result<MigrateResponse, CosmwasmError> {
+        let account_id = key.to_account(&client.cfg.prefix)?;
+
+        let msg = MsgMigrateContract {
+            sender: account_id.clone(),
+            contract: address
+                .parse()
+                .map_err(|_| CosmwasmError::ContractAddress { addr: address })?,
+            code_id: new_code_id,
+            msg: payload,
+        }
+        .to_any()
+        .map_err(ChainError::proto_encoding)?;
+
+        let tx_raw = sign_tx(client, msg, key, account_id.to_string(), tx_options).await?;
+
+        let res = client.client.broadcast_tx(&tx_raw).await?;
+
+        Ok(MigrateResponse { res })
+    }
+
     // TODO: Finish
-    // pub async fn migrate(
-    //     &self,
-    //     address: String,
-    //     new_code_id: u64,
-    //     payload: Vec<u8>,
-    //     key: &SigningKey,
-    //     simulate: bool,
-    // ) -> Result<MigrateResponse, ClientError> {
-    //     todo!()
-    // }
 }

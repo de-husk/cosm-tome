@@ -7,6 +7,7 @@ use serde::Serialize;
 
 use crate::chain::error::ChainError;
 use crate::chain::model::{ChainTxResponse, GasInfo};
+use crate::chain::tx::TxOptions;
 use crate::modules::auth::api::Auth;
 use crate::modules::auth::model::AccountResponse;
 use crate::modules::cosmwasm::model::{ExecResponse, QueryResponse};
@@ -38,6 +39,7 @@ pub trait CosmosClient {
     async fn broadcast_tx(&self, tx: &Raw) -> Result<ChainTxResponse, ChainError>;
 }
 
+#[derive(Clone, Debug)]
 pub struct CosmTome<T: CosmosClient> {
     pub(crate) cfg: ChainConfig,
     pub(crate) client: T,
@@ -88,7 +90,7 @@ impl<T: CosmosClient> CosmTome<T> {
                 payload: Vec<u8>,
                 key: &SigningKey,
                 instantiate_perms: Option<AccessConfig>,
-                simulate: bool
+                tx_options: &TxOptions,
             ) -> Result<StoreCodeResponse, CosmwasmError>;
 
             pub async fn wasm_instantiate<S: Serialize>(
@@ -96,10 +98,11 @@ impl<T: CosmosClient> CosmTome<T> {
                 [&self],
                 code_id: u64,
                 msg: &S,
+                label: Option<String>,
                 key: &SigningKey,
                 admin: Option<String>,
                 funds: Vec<Coin>,
-                simulate: bool,
+                tx_options: &TxOptions,
             ) -> Result<InstantiateResponse, CosmwasmError>;
 
             pub async fn wasm_execute<S: Serialize>(
@@ -109,7 +112,7 @@ impl<T: CosmosClient> CosmTome<T> {
                 msg: &S,
                 key: &SigningKey,
                 funds: Vec<Coin>,
-                simulate: bool,
+                tx_options: &TxOptions,
             ) -> Result<ExecResponse, CosmwasmError>;
 
             pub async fn wasm_query<S: Serialize>(

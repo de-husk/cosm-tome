@@ -121,19 +121,12 @@ pub struct Event {
     pub attributes: Vec<Tag>,
 }
 
+// TODO: clean up these imports
 impl From<cosmrs::tendermint::abci::Event> for Event {
     fn from(e: cosmrs::tendermint::abci::Event) -> Self {
         Self {
             type_str: e.type_str,
-            attributes: e
-                .attributes
-                .into_iter()
-                // TODO: Turn this into a `.map(Into::into)` as well
-                .map(|a| Tag {
-                    key: a.key.to_string(),
-                    value: a.value.to_string(),
-                })
-                .collect(),
+            attributes: e.attributes.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -157,6 +150,15 @@ impl TryFrom<cosmos_sdk_proto::tendermint::abci::Event> for Event {
 pub struct Tag {
     pub key: String,
     pub value: String,
+}
+
+impl From<cosmrs::tendermint::abci::tag::Tag> for Tag {
+    fn from(tag: cosmrs::tendermint::abci::tag::Tag) -> Self {
+        Self {
+            key: tag.key.to_string(),
+            value: tag.value.to_string(),
+        }
+    }
 }
 
 impl TryFrom<EventAttribute> for Tag {

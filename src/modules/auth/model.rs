@@ -10,7 +10,7 @@ pub struct Account {
     /// Bech32 address of account
     pub address: String,
 
-    pub pubkey: Option<PublicKey>,
+    pub pubkey: Option<PublicKey>, // TODO: Make my own type here
 
     pub account_number: u64,
 
