@@ -1,4 +1,10 @@
-use cosmos_sdk_proto::{cosmos::base::abci::v1beta1::TxResponse, tendermint::abci::EventAttribute};
+use cosmos_sdk_proto::{
+    cosmos::base::{
+        abci::v1beta1::TxResponse,
+        query::v1beta1::{PageRequest, PageResponse},
+    },
+    tendermint::abci::EventAttribute,
+};
 use cosmrs::tendermint::abci::Code;
 use serde::{Deserialize, Serialize};
 use tendermint_rpc::endpoint::{
@@ -8,7 +14,7 @@ use tendermint_rpc::endpoint::{
 
 use super::error::{ChainError, DeserializeError};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ChainResponse {
     pub code: Code, // TODO: Make my own type here instead of exposing cosmrs lib
     pub data: Option<Vec<u8>>,
@@ -47,7 +53,7 @@ impl From<TxResult> for ChainResponse {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct ChainTxResponse {
     pub res: ChainResponse,
     pub events: Vec<Event>,
@@ -176,7 +182,7 @@ impl TryFrom<EventAttribute> for Tag {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Coin {
     pub denom: String,
     pub amount: u64,
@@ -195,7 +201,7 @@ impl TryFrom<Coin> for cosmrs::Coin {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct GasInfo {
     pub gas_wanted: u64,
     pub gas_used: u64,
@@ -206,6 +212,61 @@ impl From<cosmos_sdk_proto::cosmos::base::abci::v1beta1::GasInfo> for GasInfo {
         GasInfo {
             gas_wanted: info.gas_wanted,
             gas_used: info.gas_used,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PaginationRequest {
+    pub page: PageID,
+    pub limit: u64,
+    pub reverse: bool,
+}
+
+impl From<PaginationRequest> for PageRequest {
+    fn from(p: PaginationRequest) -> PageRequest {
+        let (key, offset) = match p.page {
+            PageID::Key(key) => (key, OffsetParams::default()),
+            PageID::Offset(offset) => (vec![], offset),
+        };
+
+        PageRequest {
+            key: key,
+            offset: offset.offset,
+            count_total: offset.count_total,
+            limit: p.limit,
+            reverse: p.reverse,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum PageID {
+    /// key is the value in PaginationResponse.next_key used to query the next page.
+    Key(Vec<u8>),
+
+    /// offset is a numeric offset that can be used when key is unavailable.
+    /// It is less efficient than using key.
+    Offset(OffsetParams),
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct OffsetParams {
+    pub offset: u64,
+    pub count_total: bool,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct PaginationResponse {
+    pub next_key: Vec<u8>,
+    pub total: u64,
+}
+
+impl From<PageResponse> for PaginationResponse {
+    fn from(p: PageResponse) -> PaginationResponse {
+        PaginationResponse {
+            next_key: p.next_key,
+            total: p.total,
         }
     }
 }

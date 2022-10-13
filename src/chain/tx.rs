@@ -48,7 +48,7 @@ pub async fn sign_tx<T: CosmosClient>(
 
     let tx = Body::new(vec![msg], memo, timeout_height);
 
-    let account = client.auth_query(account_addr).await?.account;
+    let account = client.auth_query_account(account_addr).await?.account;
 
     // even if the user is supplying their own `Fee`, we will simulate the tx to ensure its valid
     let sim_fee = simulate_tx(client, tx.clone(), &account).await?;

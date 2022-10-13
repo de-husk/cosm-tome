@@ -1,11 +1,12 @@
 use cosmos_sdk_proto::cosmos::auth::v1beta1::BaseAccount;
 use cosmrs::crypto::PublicKey;
+use serde::{Deserialize, Serialize};
 
-use crate::chain::error::ChainError;
+use crate::chain::{error::ChainError, model::PaginationResponse};
 
 use super::error::AccountError;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Account {
     /// Bech32 address of account
     pub address: String,
@@ -34,7 +35,40 @@ impl TryFrom<BaseAccount> for Account {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AccountResponse {
     pub account: Account,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AccountsResponse {
+    pub accounts: Vec<Account>,
+
+    pub next: Option<PaginationResponse>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ParamsResponse {
+    pub params: Option<Params>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Params {
+    pub max_memo_characters: u64,
+    pub tx_sig_limit: u64,
+    pub tx_size_cost_per_byte: u64,
+    pub sig_verify_cost_ed25519: u64,
+    pub sig_verify_cost_secp256k1: u64,
+}
+
+impl From<cosmos_sdk_proto::cosmos::auth::v1beta1::Params> for Params {
+    fn from(p: cosmos_sdk_proto::cosmos::auth::v1beta1::Params) -> Params {
+        Params {
+            max_memo_characters: p.max_memo_characters,
+            tx_sig_limit: p.tx_sig_limit,
+            tx_size_cost_per_byte: p.tx_size_cost_per_byte,
+            sig_verify_cost_ed25519: p.sig_verify_cost_ed25519,
+            sig_verify_cost_secp256k1: p.sig_verify_cost_secp256k1,
+        }
+    }
 }
