@@ -2,7 +2,7 @@ use cosmos_sdk_proto::prost::{DecodeError, EncodeError};
 use cosmrs::ErrorReport;
 use thiserror::Error;
 
-use super::model::ChainResponse;
+use super::response::ChainResponse;
 
 #[derive(Error, Debug)]
 pub enum ChainError {

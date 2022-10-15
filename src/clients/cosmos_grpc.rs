@@ -1,17 +1,19 @@
 use async_trait::async_trait;
 use cosmos_sdk_proto::cosmos::tx::v1beta1::service_client::ServiceClient;
 use cosmos_sdk_proto::cosmos::tx::v1beta1::{BroadcastMode, BroadcastTxRequest, SimulateRequest};
-use cosmrs::tendermint::abci::Code;
+use serde::{Deserialize, Serialize};
 use tonic::codec::ProstCodec;
 
 use cosmos_sdk_proto::traits::Message;
 use cosmrs::tx::Raw;
 
-use crate::chain::model::{ChainResponse, GasInfo};
-use crate::chain::{error::ChainError, model::ChainTxResponse};
+use crate::chain::fee::GasInfo;
+use crate::chain::response::{ChainResponse, Code};
+use crate::chain::{error::ChainError, response::ChainTxResponse};
 
 use super::client::CosmosClient;
 
+#[derive(Clone, Debug)]
 pub struct CosmosgRPC {
     grpc_endpoint: String,
 }
