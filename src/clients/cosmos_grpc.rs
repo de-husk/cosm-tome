@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use cosmos_sdk_proto::cosmos::tx::v1beta1::service_client::ServiceClient;
 use cosmos_sdk_proto::cosmos::tx::v1beta1::{BroadcastMode, BroadcastTxRequest, SimulateRequest};
-use serde::{Deserialize, Serialize};
 use tonic::codec::ProstCodec;
 
 use cosmos_sdk_proto::traits::Message;

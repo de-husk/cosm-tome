@@ -5,8 +5,9 @@ use cosmrs::tx::Raw;
 use delegate::delegate;
 use serde::Serialize;
 
+use crate::chain::coin::Coin;
 use crate::chain::error::ChainError;
-use crate::chain::fee::{Coin, GasInfo};
+use crate::chain::fee::GasInfo;
 use crate::chain::request::{PaginationRequest, TxOptions};
 use crate::chain::response::ChainTxResponse;
 use crate::modules::auth::api::Auth;

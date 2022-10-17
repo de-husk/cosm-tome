@@ -8,8 +8,8 @@ use cosmrs::cosmwasm::{
     MsgExecuteContract, MsgInstantiateContract, MsgMigrateContract, MsgStoreCode,
 };
 
+use crate::chain::coin::Coin;
 use crate::chain::error::ChainError;
-use crate::chain::fee::Coin;
 use crate::chain::request::TxOptions;
 use crate::chain::tx::sign_tx;
 use crate::clients::client::CosmTome;

@@ -10,8 +10,9 @@ use cosmrs::{
     tx::{Body, Raw},
 };
 
+use super::coin::{Coin, Denom};
 use super::error::ChainError;
-use super::fee::{Coin, Denom, Fee};
+use super::fee::Fee;
 use super::request::TxOptions;
 
 pub async fn sign_tx<T: CosmosClient>(
