@@ -7,10 +7,12 @@ use cosmrs::tx::Raw;
 use tendermint_rpc::Client;
 
 use crate::chain::error::ChainError;
-use crate::chain::model::{ChainTxResponse, GasInfo};
+use crate::chain::fee::GasInfo;
+use crate::chain::response::ChainTxResponse;
 
 use super::client::CosmosClient;
 
+#[derive(Clone, Debug)]
 pub struct TendermintRPC {
     client: HttpClient,
 }

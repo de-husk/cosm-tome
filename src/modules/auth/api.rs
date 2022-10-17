@@ -1,5 +1,5 @@
 use crate::chain::error::ChainError;
-use crate::chain::model::PaginationRequest;
+use crate::chain::request::PaginationRequest;
 use crate::clients::client::{CosmTome, CosmosClient};
 use crate::modules::auth::model::Account;
 use cosmos_sdk_proto::cosmos::auth::v1beta1::{

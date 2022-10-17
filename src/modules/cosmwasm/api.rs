@@ -8,11 +8,13 @@ use cosmrs::cosmwasm::{
     MsgExecuteContract, MsgInstantiateContract, MsgMigrateContract, MsgStoreCode,
 };
 
+use crate::chain::coin::Coin;
 use crate::chain::error::ChainError;
-use crate::chain::tx::{sign_tx, TxOptions};
+use crate::chain::request::TxOptions;
+use crate::chain::tx::sign_tx;
 use crate::clients::client::CosmTome;
 
-use crate::{chain::model::Coin, clients::client::CosmosClient, key::key::SigningKey};
+use crate::{clients::client::CosmosClient, key::key::SigningKey};
 
 use super::model::{ExecResponse, MigrateResponse, QueryResponse};
 use super::{
@@ -59,17 +61,22 @@ impl Cosmwasm {
         Ok(StoreCodeResponse { code_id, res: res })
     }
 
-    pub(crate) async fn wasm_instantiate<S: Serialize, T: CosmosClient>(
+    pub(crate) async fn wasm_instantiate<S, T, I>(
         &self,
         client: &CosmTome<T>,
         code_id: u64,
         msg: &S,
-        label: Option<String>,
+        label: String,
         key: &SigningKey,
         admin: Option<String>,
-        funds: Vec<Coin>,
+        funds: I,
         tx_options: &TxOptions,
-    ) -> Result<InstantiateResponse, CosmwasmError> {
+    ) -> Result<InstantiateResponse, CosmwasmError>
+    where
+        S: Serialize,
+        T: CosmosClient,
+        I: IntoIterator<Item = Coin>,
+    {
         let payload = serde_json::to_vec(msg).map_err(CosmwasmError::json)?;
         let account_id = key.to_account(&client.cfg.prefix)?;
 
@@ -85,7 +92,7 @@ impl Cosmwasm {
                 .transpose()
                 .map_err(|_| CosmwasmError::AdminAddress)?,
             code_id,
-            label: label,
+            label: Some(label),
             msg: payload,
             funds: cosm_funds,
         }
@@ -107,15 +114,20 @@ impl Cosmwasm {
         })
     }
 
-    pub(crate) async fn wasm_execute<S: Serialize, T: CosmosClient>(
+    pub(crate) async fn wasm_execute<S, T, I>(
         &self,
         client: &CosmTome<T>,
         address: String,
         msg: &S,
         key: &SigningKey,
-        funds: Vec<Coin>,
+        funds: I,
         tx_options: &TxOptions,
-    ) -> Result<ExecResponse, CosmwasmError> {
+    ) -> Result<ExecResponse, CosmwasmError>
+    where
+        S: Serialize,
+        T: CosmosClient,
+        I: IntoIterator<Item = Coin>,
+    {
         let payload = serde_json::to_vec(msg).map_err(CosmwasmError::json)?;
 
         let account_id = key.to_account(&client.cfg.prefix)?;
@@ -152,8 +164,7 @@ impl Cosmwasm {
         let payload = serde_json::to_vec(msg).map_err(CosmwasmError::json)?;
 
         let req = QuerySmartContractStateRequest {
-            // NOTE: we are unwrapping an `std::convert::Infallible` error here
-            address: address.parse().unwrap(),
+            address: address,
             query_data: payload,
         };
 

@@ -5,14 +5,15 @@ use cosmrs::tx::Raw;
 use delegate::delegate;
 use serde::Serialize;
 
+use crate::chain::coin::Coin;
 use crate::chain::error::ChainError;
-use crate::chain::model::{ChainTxResponse, GasInfo, PaginationRequest};
-use crate::chain::tx::TxOptions;
+use crate::chain::fee::GasInfo;
+use crate::chain::request::{PaginationRequest, TxOptions};
+use crate::chain::response::ChainTxResponse;
 use crate::modules::auth::api::Auth;
 use crate::modules::auth::model::{AccountResponse, AccountsResponse, ParamsResponse};
 use crate::modules::cosmwasm::model::{ExecResponse, QueryResponse};
 use crate::{
-    chain::model::Coin,
     config::config::ChainConfig,
     key::key::SigningKey,
     modules::auth::error::AccountError,
@@ -113,7 +114,7 @@ impl<T: CosmosClient> CosmTome<T> {
                 [&self],
                 code_id: u64,
                 msg: &S,
-                label: Option<String>,
+                label: String,
                 key: &SigningKey,
                 admin: Option<String>,
                 funds: Vec<Coin>,
