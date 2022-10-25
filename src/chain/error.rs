@@ -30,6 +30,10 @@ pub enum ChainError {
     #[error("proto decoding error")]
     ProtoDecoding { message: String },
 
+    #[error("invalid cosmos msg sent to simulate endpoint")]
+    Simulation,
+
+    // TODO: Reexport these error types
     #[error(transparent)]
     Keyring(#[from] keyring::Error),
 

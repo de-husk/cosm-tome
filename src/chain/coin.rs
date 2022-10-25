@@ -1,4 +1,4 @@
-use std::{fmt, str::FromStr};
+use std::{fmt, num::ParseIntError, str::FromStr};
 
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -36,6 +36,31 @@ impl TryFrom<cosmrs::Coin> for Coin {
             denom: coin.denom.try_into()?,
             amount: coin.amount,
         })
+    }
+}
+
+impl TryFrom<cosmos_sdk_proto::cosmos::base::v1beta1::Coin> for Coin {
+    type Error = ChainError;
+
+    fn try_from(coin: cosmos_sdk_proto::cosmos::base::v1beta1::Coin) -> Result<Self, Self::Error> {
+        Ok(Self {
+            denom: coin.denom.parse()?,
+            amount: coin
+                .amount
+                .parse()
+                .map_err(|e: ParseIntError| ChainError::ProtoDecoding {
+                    message: e.to_string(),
+                })?,
+        })
+    }
+}
+
+impl From<Coin> for cosmos_sdk_proto::cosmos::base::v1beta1::Coin {
+    fn from(coin: Coin) -> Self {
+        Self {
+            denom: coin.denom.to_string(),
+            amount: coin.amount.to_string(),
+        }
     }
 }
 

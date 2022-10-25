@@ -12,9 +12,6 @@ pub enum CosmwasmError {
     #[error("invalid admin address")]
     AdminAddress,
 
-    #[error("invalid contract address: {addr:?}")]
-    ContractAddress { addr: String },
-
     #[error("invalid instantiate permissions")]
     InstantiatePerms { source: ErrorReport },
 

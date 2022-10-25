@@ -5,13 +5,18 @@ use cosmrs::tx::Raw;
 use delegate::delegate;
 use serde::Serialize;
 
-use crate::chain::coin::Coin;
+use crate::chain::coin::{Coin, Denom};
 use crate::chain::error::ChainError;
 use crate::chain::fee::GasInfo;
 use crate::chain::request::{PaginationRequest, TxOptions};
 use crate::chain::response::ChainTxResponse;
 use crate::modules::auth::api::Auth;
-use crate::modules::auth::model::{AccountResponse, AccountsResponse, ParamsResponse};
+use crate::modules::auth::model::{AccountResponse, AccountsResponse, Address};
+use crate::modules::bank::api::Bank;
+use crate::modules::bank::error::BankError;
+use crate::modules::bank::model::{
+    BalanceResponse, BalancesResponse, DenomMetadataResponse, DenomsMetadataResponse, SendResponse,
+};
 use crate::modules::cosmwasm::model::{ExecResponse, QueryResponse};
 use crate::{
     config::config::ChainConfig,
@@ -48,7 +53,7 @@ pub struct CosmTome<T: CosmosClient> {
     // cosmos modules:
     pub(crate) wasm: Cosmwasm,
     pub(crate) auth: Auth,
-    // bank: Bank,
+    pub(crate) bank: Bank,
 }
 
 impl<T: CosmosClient> CosmTome<T> {
@@ -59,6 +64,7 @@ impl<T: CosmosClient> CosmTome<T> {
             client,
             wasm: Cosmwasm {},
             auth: Auth {},
+            bank: Bank {},
         }
     }
 
@@ -68,6 +74,7 @@ impl<T: CosmosClient> CosmTome<T> {
             cfg,
             wasm: Cosmwasm {},
             auth: Auth {},
+            bank: Bank {},
         })
     }
 
@@ -77,6 +84,7 @@ impl<T: CosmosClient> CosmTome<T> {
             cfg,
             wasm: Cosmwasm {},
             auth: Auth {},
+            bank: Bank {},
         })
     }
 
@@ -85,7 +93,7 @@ impl<T: CosmosClient> CosmTome<T> {
             pub async fn auth_query_account(
                 &self,
                 [&self],
-                address: String
+                address: &Address
             ) -> Result<AccountResponse, AccountError>;
 
             pub async fn auth_query_accounts(
@@ -97,8 +105,73 @@ impl<T: CosmosClient> CosmTome<T> {
             pub async fn auth_query_params(
                 &self,
                 [&self],
-            ) -> Result<ParamsResponse, AccountError>;
+            ) -> Result<crate::modules::auth::model::ParamsResponse, AccountError>;
         }
+
+        to self.bank {
+            pub async fn bank_send<I>(
+                &self,
+                [&self],
+                from: &Address,
+                to: &Address,
+                amounts: I,
+                key: &SigningKey,
+                tx_options: &TxOptions,
+            ) -> Result<SendResponse, BankError>
+            where
+                I: IntoIterator<Item = Coin>;
+
+            pub async fn bank_query_balance(
+                &self,
+                [&self],
+                address: &Address,
+                denom: Denom,
+            ) -> Result<BalanceResponse, BankError>;
+
+            pub async fn bank_query_balances(
+                &self,
+                [&self],
+                address: &Address,
+                pagination: Option<PaginationRequest>,
+            ) -> Result<BalancesResponse, BankError>;
+
+            pub async fn bank_query_spendable_balances(
+                &self,
+                [&self],
+                address: &Address,
+                pagination: Option<PaginationRequest>,
+            ) -> Result<BalancesResponse, BankError>;
+
+            pub async fn bank_query_supply(
+                &self,
+                [&self],
+                denom: Denom,
+            ) -> Result<BalanceResponse, BankError>;
+
+            pub async fn bank_query_total_supply(
+                &self,
+                [&self],
+                pagination: Option<PaginationRequest>,
+            ) -> Result<BalancesResponse, BankError>;
+
+            pub async fn bank_query_denom_metadata(
+                &self,
+                [&self],
+                denom: Denom,
+            ) -> Result<DenomMetadataResponse, BankError>;
+
+            pub async fn bank_query_denoms_metadata(
+                &self,
+                [&self],
+                pagination: Option<PaginationRequest>,
+            ) -> Result<DenomsMetadataResponse, BankError>;
+
+            pub async fn bank_query_params(
+                &self,
+                [&self],
+            ) -> Result<crate::modules::bank::model::ParamsResponse, BankError>;
+        }
+
         to self.wasm {
             pub async fn wasm_store(
                 &self,
@@ -109,32 +182,38 @@ impl<T: CosmosClient> CosmTome<T> {
                 tx_options: &TxOptions,
             ) -> Result<StoreCodeResponse, CosmwasmError>;
 
-            pub async fn wasm_instantiate<S: Serialize>(
+            pub async fn wasm_instantiate<S, I>(
                 &self,
                 [&self],
                 code_id: u64,
                 msg: &S,
                 label: String,
                 key: &SigningKey,
-                admin: Option<String>,
-                funds: Vec<Coin>,
+                admin: Option<Address>,
+                funds: I,
                 tx_options: &TxOptions,
-            ) -> Result<InstantiateResponse, CosmwasmError>;
+            ) -> Result<InstantiateResponse, CosmwasmError>
+            where
+                S: Serialize,
+                I: IntoIterator<Item = Coin>;
 
-            pub async fn wasm_execute<S: Serialize>(
+            pub async fn wasm_execute<S, I>(
                 &self,
                 [&self],
-                address: String,
+                address: &Address,
                 msg: &S,
                 key: &SigningKey,
-                funds: Vec<Coin>,
+                funds: I,
                 tx_options: &TxOptions,
-            ) -> Result<ExecResponse, CosmwasmError>;
+            ) -> Result<ExecResponse, CosmwasmError>
+            where
+                S: Serialize,
+                I: IntoIterator<Item = Coin>;
 
             pub async fn wasm_query<S: Serialize>(
                 &self,
                 [&self],
-                address: String,
+                address: &Address,
                 msg: &S,
             ) -> Result<QueryResponse, CosmwasmError> ;
         }

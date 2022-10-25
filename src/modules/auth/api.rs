@@ -9,7 +9,7 @@ use cosmos_sdk_proto::cosmos::auth::v1beta1::{
 use cosmos_sdk_proto::traits::Message;
 
 use super::error::AccountError;
-use super::model::{AccountResponse, AccountsResponse, ParamsResponse};
+use super::model::{AccountResponse, AccountsResponse, Address, ParamsResponse};
 
 #[derive(Clone, Debug)]
 pub struct Auth {}
@@ -18,10 +18,10 @@ impl Auth {
     pub(crate) async fn auth_query_account<T: CosmosClient>(
         &self,
         client: &CosmTome<T>,
-        address: String,
+        address: &Address,
     ) -> Result<AccountResponse, AccountError> {
         let req = QueryAccountRequest {
-            address: address.clone(),
+            address: address.to_string(),
         };
 
         let res = client
@@ -32,7 +32,9 @@ impl Auth {
             )
             .await?;
 
-        let account = res.account.ok_or(AccountError::AccountId { id: address })?;
+        let account = res.account.ok_or(AccountError::AccountId {
+            id: address.to_string(),
+        })?;
 
         let base_account = BaseAccount::decode(account.value.as_slice())
             .map_err(ChainError::prost_proto_decoding)?;

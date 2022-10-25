@@ -90,7 +90,7 @@ impl CosmosClient for CosmosgRPC {
             })?
             .into_inner()
             .gas_info
-            .unwrap(); // TODO: Dont unwrap. Why is this even optional??
+            .ok_or(ChainError::Simulation)?;
 
         Ok(gas_info.into())
     }

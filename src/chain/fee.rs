@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use super::{coin::Coin, error::ChainError};
-use crate::modules::auth::model::AccountAddr;
+use crate::modules::auth::model::Address;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Fee {
@@ -11,17 +11,17 @@ pub struct Fee {
 
     pub gas_limit: Gas,
 
-    pub payer: Option<AccountAddr>,
+    pub payer: Option<Address>,
 
-    pub granter: Option<AccountAddr>,
+    pub granter: Option<Address>,
 }
 
 impl Fee {
     pub fn new(
         amount: Coin,
         gas_limit: impl Into<Gas>,
-        payer: Option<AccountAddr>,
-        granter: Option<AccountAddr>,
+        payer: Option<Address>,
+        granter: Option<Address>,
     ) -> Self {
         Self {
             amount: vec![amount],

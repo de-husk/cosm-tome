@@ -1,6 +1,6 @@
 use crate::clients::client::CosmosClient;
 use crate::modules::auth::error::AccountError;
-use crate::modules::auth::model::Account;
+use crate::modules::auth::model::{Account, Address};
 use crate::{clients::client::CosmTome, key::key::SigningKey};
 use cosmos_sdk_proto::cosmos::tx::v1beta1::TxRaw;
 use cosmos_sdk_proto::Any;
@@ -19,7 +19,7 @@ pub async fn sign_tx<T: CosmosClient>(
     client: &CosmTome<T>,
     msg: Any,
     key: &SigningKey,
-    account_addr: String,
+    account_addr: &Address,
     tx_options: &TxOptions,
 ) -> Result<Raw, AccountError> {
     let timeout_height = tx_options.timeout_height.unwrap_or_default();

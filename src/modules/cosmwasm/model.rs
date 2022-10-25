@@ -17,7 +17,7 @@ impl AsRef<ChainTxResponse> for StoreCodeResponse {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct InstantiateResponse {
-    pub address: String,
+    pub address: String, // TODO: Use AccountAddr?
     pub res: ChainTxResponse,
 }
 

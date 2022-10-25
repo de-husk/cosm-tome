@@ -80,7 +80,7 @@ impl CosmosClient for TendermintRPC {
         let gas_info = SimulateResponse::decode(res.value.as_slice())
             .map_err(ChainError::prost_proto_decoding)?
             .gas_info
-            .unwrap(); // TODO: Dont unwrap. Why is this even optional??
+            .ok_or(ChainError::Simulation)?;
 
         Ok(gas_info.into())
     }
