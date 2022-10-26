@@ -1,7 +1,10 @@
 use cosmos_sdk_proto::cosmwasm::wasm::v1::QuerySmartContractStateResponse;
 use serde::{Deserialize, Serialize};
 
-use crate::chain::response::{ChainResponse, ChainTxResponse, Code};
+use crate::{
+    chain::response::{ChainResponse, ChainTxResponse, Code},
+    modules::auth::model::Address,
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct StoreCodeResponse {
@@ -17,7 +20,7 @@ impl AsRef<ChainTxResponse> for StoreCodeResponse {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct InstantiateResponse {
-    pub address: String, // TODO: Use AccountAddr?
+    pub address: Address,
     pub res: ChainTxResponse,
 }
 

@@ -107,7 +107,7 @@ impl Cosmwasm {
             .value;
 
         Ok(InstantiateResponse {
-            address: addr,
+            address: addr.parse()?,
             res: res,
         })
     }

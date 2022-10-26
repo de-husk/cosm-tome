@@ -46,6 +46,13 @@ pub struct KeyringParams {
     pub key_name: String,
 }
 
+impl TryFrom<SigningKey> for secp256k1::SigningKey {
+    type Error = ChainError;
+    fn try_from(signer: SigningKey) -> Result<secp256k1::SigningKey, Self::Error> {
+        secp256k1::SigningKey::try_from(&signer)
+    }
+}
+
 impl TryFrom<&SigningKey> for secp256k1::SigningKey {
     type Error = ChainError;
     fn try_from(signer: &SigningKey) -> Result<secp256k1::SigningKey, Self::Error> {
