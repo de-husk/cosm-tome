@@ -14,6 +14,7 @@ use crate::chain::request::TxOptions;
 use crate::chain::tx::sign_tx;
 use crate::clients::client::CosmTome;
 
+use crate::modules::auth::model::Address;
 use crate::{clients::client::CosmosClient, key::key::SigningKey};
 
 use super::model::{ExecResponse, MigrateResponse, QueryResponse};
@@ -34,10 +35,10 @@ impl Cosmwasm {
         instantiate_perms: Option<AccessConfig>, // TODO: make my own type in chain::model
         tx_options: &TxOptions,
     ) -> Result<StoreCodeResponse, CosmwasmError> {
-        let account_id = key.to_account(&client.cfg.prefix)?;
+        let sender_addr = key.to_addr(&client.cfg.prefix)?;
 
         let msg = MsgStoreCode {
-            sender: account_id.clone(),
+            sender: sender_addr.clone().into(),
             wasm_byte_code: payload,
             instantiate_permission: instantiate_perms
                 .map(TryInto::try_into)
@@ -47,7 +48,7 @@ impl Cosmwasm {
         .to_any()
         .map_err(ChainError::proto_encoding)?;
 
-        let tx_raw = sign_tx(client, msg, key, account_id.to_string(), tx_options).await?;
+        let tx_raw = sign_tx(client, msg, key, &sender_addr, tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
@@ -68,7 +69,7 @@ impl Cosmwasm {
         msg: &S,
         label: String,
         key: &SigningKey,
-        admin: Option<String>,
+        admin: Option<Address>,
         funds: I,
         tx_options: &TxOptions,
     ) -> Result<InstantiateResponse, CosmwasmError>
@@ -78,7 +79,7 @@ impl Cosmwasm {
         I: IntoIterator<Item = Coin>,
     {
         let payload = serde_json::to_vec(msg).map_err(CosmwasmError::json)?;
-        let account_id = key.to_account(&client.cfg.prefix)?;
+        let sender_addr = key.to_addr(&client.cfg.prefix)?;
 
         let mut cosm_funds = vec![];
         for fund in funds {
@@ -86,11 +87,8 @@ impl Cosmwasm {
         }
 
         let msg = MsgInstantiateContract {
-            sender: account_id.clone(),
-            admin: admin
-                .map(|s| s.parse())
-                .transpose()
-                .map_err(|_| CosmwasmError::AdminAddress)?,
+            sender: sender_addr.clone().into(),
+            admin: admin.map(|s| s.into()),
             code_id,
             label: Some(label),
             msg: payload,
@@ -99,7 +97,7 @@ impl Cosmwasm {
         .to_any()
         .map_err(ChainError::proto_encoding)?;
 
-        let tx_raw = sign_tx(client, msg, key, account_id.to_string(), tx_options).await?;
+        let tx_raw = sign_tx(client, msg, key, &sender_addr, tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
@@ -109,7 +107,7 @@ impl Cosmwasm {
             .value;
 
         Ok(InstantiateResponse {
-            address: addr,
+            address: addr.parse()?,
             res: res,
         })
     }
@@ -117,7 +115,7 @@ impl Cosmwasm {
     pub(crate) async fn wasm_execute<S, T, I>(
         &self,
         client: &CosmTome<T>,
-        address: String,
+        address: &Address,
         msg: &S,
         key: &SigningKey,
         funds: I,
@@ -130,7 +128,7 @@ impl Cosmwasm {
     {
         let payload = serde_json::to_vec(msg).map_err(CosmwasmError::json)?;
 
-        let account_id = key.to_account(&client.cfg.prefix)?;
+        let sender_addr = key.to_addr(&client.cfg.prefix)?;
 
         let mut cosm_funds = vec![];
         for fund in funds {
@@ -138,17 +136,15 @@ impl Cosmwasm {
         }
 
         let msg = MsgExecuteContract {
-            sender: account_id.clone(),
-            contract: address
-                .parse()
-                .map_err(|_| CosmwasmError::ContractAddress { addr: address })?,
+            sender: sender_addr.clone().into(),
+            contract: address.into(),
             msg: payload,
             funds: cosm_funds,
         }
         .to_any()
         .map_err(ChainError::proto_encoding)?;
 
-        let tx_raw = sign_tx(client, msg, key, account_id.to_string(), tx_options).await?;
+        let tx_raw = sign_tx(client, msg, key, &sender_addr, tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
@@ -158,13 +154,13 @@ impl Cosmwasm {
     pub(crate) async fn wasm_query<S: Serialize, T: CosmosClient>(
         &self,
         client: &CosmTome<T>,
-        address: String,
+        address: &Address,
         msg: &S,
     ) -> Result<QueryResponse, CosmwasmError> {
         let payload = serde_json::to_vec(msg).map_err(CosmwasmError::json)?;
 
         let req = QuerySmartContractStateRequest {
-            address: address,
+            address: address.to_string(),
             query_data: payload,
         };
 
@@ -182,26 +178,24 @@ impl Cosmwasm {
     pub async fn migrate<T: CosmosClient>(
         &self,
         client: &CosmTome<T>,
-        address: String,
+        address: &Address,
         new_code_id: u64,
         payload: Vec<u8>,
         key: &SigningKey,
         tx_options: &TxOptions,
     ) -> Result<MigrateResponse, CosmwasmError> {
-        let account_id = key.to_account(&client.cfg.prefix)?;
+        let sender_addr = key.to_addr(&client.cfg.prefix)?;
 
         let msg = MsgMigrateContract {
-            sender: account_id.clone(),
-            contract: address
-                .parse()
-                .map_err(|_| CosmwasmError::ContractAddress { addr: address })?,
+            sender: sender_addr.clone().into(),
+            contract: address.into(),
             code_id: new_code_id,
             msg: payload,
         }
         .to_any()
         .map_err(ChainError::proto_encoding)?;
 
-        let tx_raw = sign_tx(client, msg, key, account_id.to_string(), tx_options).await?;
+        let tx_raw = sign_tx(client, msg, key, &sender_addr, tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 

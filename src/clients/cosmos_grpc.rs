@@ -90,7 +90,7 @@ impl CosmosClient for CosmosgRPC {
             })?
             .into_inner()
             .gas_info
-            .unwrap(); // TODO: Dont unwrap. Why is this even optional??
+            .ok_or(ChainError::Simulation)?;
 
         Ok(gas_info.into())
     }
@@ -100,14 +100,11 @@ impl CosmosClient for CosmosgRPC {
 
         let req = BroadcastTxRequest {
             tx_bytes: tx.to_bytes().map_err(ChainError::proto_encoding)?,
-            // TODO: Allow the client to set the broadcast MODE
             mode: BroadcastMode::Block.into(),
         };
 
         let res = client.broadcast_tx(req).await?.into_inner();
 
-        // TODO: I assume res.tx_response is None if mode is ASYNC
-        // for now, im unwrapping here
         let res: ChainTxResponse = res.tx_response.unwrap().try_into()?;
 
         if res.res.code.is_err() {

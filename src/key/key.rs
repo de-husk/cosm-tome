@@ -1,8 +1,9 @@
+use cosmrs::bip32;
 use cosmrs::crypto::secp256k1;
-use cosmrs::{bip32, AccountId};
 use keyring::Entry;
 
 use crate::chain::error::ChainError;
+use crate::modules::auth::model::Address;
 
 // https://github.com/confio/cosmos-hd-key-derivation-spec#the-cosmos-hub-path
 const DERVIATION_PATH: &str = "m/44'/118'/0'/0/0";
@@ -16,13 +17,13 @@ pub struct SigningKey {
 }
 
 impl SigningKey {
-    pub fn to_account(&self, prefix: &str) -> Result<AccountId, ChainError> {
+    pub fn to_addr(&self, prefix: &str) -> Result<Address, ChainError> {
         let key: secp256k1::SigningKey = self.try_into()?;
         let account = key
             .public_key()
             .account_id(prefix)
             .map_err(ChainError::crypto)?;
-        Ok(account)
+        Ok(account.into())
     }
 }
 
@@ -43,6 +44,13 @@ pub enum Key {
 pub struct KeyringParams {
     pub service: String,
     pub key_name: String,
+}
+
+impl TryFrom<SigningKey> for secp256k1::SigningKey {
+    type Error = ChainError;
+    fn try_from(signer: SigningKey) -> Result<secp256k1::SigningKey, Self::Error> {
+        secp256k1::SigningKey::try_from(&signer)
+    }
 }
 
 impl TryFrom<&SigningKey> for secp256k1::SigningKey {

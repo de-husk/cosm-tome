@@ -98,7 +98,6 @@ pub struct TxOptions {
 
     /// An arbitrary memo to be added to the transaction
     pub memo: Option<String>,
-    // TODO: Broadcast mode (block, async, etc)
 }
 
 impl Default for TxOptions {

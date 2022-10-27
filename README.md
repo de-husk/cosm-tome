@@ -24,7 +24,7 @@ As more APIs are added to Cosmos SDK, we will simply add a new `CosmosClient` im
 | ------------- | ------------- | 
 | Auth | ✅ |
 | Authz | 🚫 |
-| Bank | 🚫 |
+| Bank | ✅ |
 | Tendermint | 🚫 |
 | Crisis | 🚫 |
 | Distribution | 🚫 |

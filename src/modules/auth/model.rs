@@ -9,9 +9,9 @@ use crate::chain::{error::ChainError, request::PaginationResponse};
 use super::error::AccountError;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord)]
-pub struct AccountAddr(AccountId);
+pub struct Address(AccountId);
 
-impl AccountAddr {
+impl Address {
     pub fn new(prefix: &str, bytes: &[u8]) -> Result<Self, AccountError> {
         let account_id =
             AccountId::new(prefix, bytes).map_err(|e| AccountError::AccountIdParse {
@@ -30,44 +30,50 @@ impl AccountAddr {
     }
 }
 
-impl AsRef<str> for AccountAddr {
+impl AsRef<str> for Address {
     fn as_ref(&self) -> &str {
         &self.0.as_ref()
     }
 }
 
-impl fmt::Display for AccountAddr {
+impl fmt::Display for Address {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl FromStr for AccountAddr {
+impl FromStr for Address {
     type Err = AccountError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(AccountAddr(AccountId::from_str(s).map_err(|_| {
+        Ok(Address(AccountId::from_str(s).map_err(|_| {
             AccountError::AccountId { id: s.to_string() }
         })?))
     }
 }
 
-impl From<AccountId> for AccountAddr {
-    fn from(account: AccountId) -> AccountAddr {
-        AccountAddr(account)
+impl From<AccountId> for Address {
+    fn from(account: AccountId) -> Address {
+        Address(account)
     }
 }
 
-impl From<AccountAddr> for AccountId {
-    fn from(account: AccountAddr) -> AccountId {
+impl From<Address> for AccountId {
+    fn from(account: Address) -> AccountId {
         account.0
+    }
+}
+
+impl From<&Address> for AccountId {
+    fn from(account: &Address) -> AccountId {
+        account.0.clone()
     }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Account {
     /// Bech32 address of account
-    pub address: AccountAddr,
+    pub address: Address,
 
     pub pubkey: Option<PublicKey>,
 
