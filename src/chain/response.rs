@@ -65,12 +65,12 @@ pub struct ChainTxResponse {
 }
 
 impl ChainTxResponse {
-    pub fn find_event_tag(&self, event_type: String, key_name: String) -> Option<Tag> {
+    pub fn find_event_tag(&self, event_type: String, key_name: String) -> Option<&Tag> {
         for event in &self.events {
             if event.type_str == event_type {
                 for attr in &event.attributes {
                     if attr.key == key_name {
-                        return Some(attr.clone());
+                        return Some(attr);
                     }
                 }
             }
@@ -88,16 +88,14 @@ impl AsRef<ChainResponse> for ChainTxResponse {
 impl From<TendermintResponse> for ChainTxResponse {
     fn from(res: TendermintResponse) -> Self {
         ChainTxResponse {
-            events: res
-                .deliver_tx
-                .events
-                .clone()
-                .into_iter()
-                .map(Into::into)
-                .collect(),
+            res: ChainResponse {
+                code: res.deliver_tx.code.into(),
+                data: res.deliver_tx.data.map(|d| d.into()),
+                log: res.deliver_tx.log.to_string(),
+            },
+            events: res.deliver_tx.events.into_iter().map(Into::into).collect(),
             gas_used: res.deliver_tx.gas_used.into(),
             gas_wanted: res.deliver_tx.gas_wanted.into(),
-            res: res.deliver_tx.into(),
             tx_hash: res.hash.to_string(),
             height: res.height.into(),
         }

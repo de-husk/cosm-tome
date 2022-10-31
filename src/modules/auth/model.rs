@@ -46,8 +46,10 @@ impl FromStr for Address {
     type Err = AccountError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Address(AccountId::from_str(s).map_err(|_| {
-            AccountError::AccountId { id: s.to_string() }
+        Ok(Address(AccountId::from_str(s).map_err(|e| {
+            AccountError::Address {
+                message: e.to_string(),
+            }
         })?))
     }
 }
@@ -64,9 +66,11 @@ impl From<Address> for AccountId {
     }
 }
 
-impl From<&Address> for AccountId {
-    fn from(account: &Address) -> AccountId {
-        account.0.clone()
+impl From<Address> for String {
+    fn from(address: Address) -> Self {
+        // TODO: Replace to_string() with into() once this is merged and released:
+        // https://github.com/cosmos/cosmos-rust/pull/301/files
+        address.0.to_string()
     }
 }
 

@@ -38,6 +38,7 @@ pub enum Key {
     /// Use OS Keyring to access private key.
     /// Safe for testnet / mainnet.
     Keyring(KeyringParams),
+    // TODO: Add ledger support
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,7 +72,7 @@ fn mnemonic_to_signing_key(mnemonic: &str) -> Result<secp256k1::SigningKey, Chai
         .map_err(|_| ChainError::Mnemonic)?
         .to_seed("");
     Ok(
-        bip32::XPrv::derive_from_path(seed, &DERVIATION_PATH.parse().unwrap())
+        secp256k1::SigningKey::derive_from_path(seed, &DERVIATION_PATH.parse().unwrap())
             .map_err(|_| ChainError::DerviationPath)?
             .into(),
     )

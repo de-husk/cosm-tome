@@ -27,7 +27,7 @@ impl CosmosgRPC {
     async fn grpc_call<I, O>(
         &self,
         req: impl tonic::IntoRequest<I>,
-        path: String,
+        path: &str,
     ) -> Result<O, ChainError>
     where
         I: Message + 'static,
@@ -46,8 +46,9 @@ impl CosmosgRPC {
         let res = client
             .unary(
                 req.into_request(),
-                path.parse()
-                    .map_err(|_| ChainError::QueryPath { url: path })?,
+                path.parse().map_err(|_| ChainError::QueryPath {
+                    url: path.to_string(),
+                })?,
                 codec,
             )
             .await;
@@ -64,7 +65,7 @@ impl CosmosClient for CosmosgRPC {
         I: Message + 'static,
         O: Message + Default + 'static,
     {
-        let res = self.grpc_call::<I, O>(msg, path.to_string()).await?;
+        let res = self.grpc_call::<I, O>(msg, path).await?;
 
         Ok(res)
     }

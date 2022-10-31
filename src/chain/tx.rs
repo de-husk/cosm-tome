@@ -19,13 +19,14 @@ pub async fn sign_tx<T: CosmosClient>(
     client: &CosmTome<T>,
     msg: Any,
     key: &SigningKey,
-    account_addr: &Address,
+    account_addr: Address,
     tx_options: &TxOptions,
 ) -> Result<Raw, AccountError> {
     let timeout_height = tx_options.timeout_height.unwrap_or_default();
-    let memo = tx_options.memo.clone().unwrap_or_default();
 
-    let tx = Body::new(vec![msg], memo, timeout_height);
+    // TODO: Stop cloning `tx`
+    // Should I just use an Rc<>?
+    let tx = Body::new(vec![msg], &tx_options.memo, timeout_height);
 
     let account = client.auth_query_account(account_addr).await?.account;
 
