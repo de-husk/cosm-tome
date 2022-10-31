@@ -97,7 +97,7 @@ pub struct TxOptions {
     pub fee: Option<Fee>,
 
     /// An arbitrary memo to be added to the transaction
-    pub memo: Option<String>,
+    pub memo: String,
 }
 
 impl Default for TxOptions {
@@ -105,7 +105,7 @@ impl Default for TxOptions {
         Self {
             fee: None,
             timeout_height: Some(0),
-            memo: Some("Made with cosm-client".to_string()),
+            memo: "Made with cosm-client".to_string(),
         }
     }
 }

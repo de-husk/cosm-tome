@@ -58,7 +58,7 @@ impl TryFrom<cosmos_sdk_proto::cosmos::base::v1beta1::Coin> for Coin {
 impl From<Coin> for cosmos_sdk_proto::cosmos::base::v1beta1::Coin {
     fn from(coin: Coin) -> Self {
         Self {
-            denom: coin.denom.to_string(),
+            denom: coin.denom.into(),
             amount: coin.amount.to_string(),
         }
     }
@@ -88,11 +88,9 @@ impl FromStr for Denom {
         let re = Regex::new(r"^[a-zA-Z][a-zA-Z0-9/:._-]{2,127}$").unwrap();
 
         if re.is_match(s) {
-            Ok(Denom(s.to_string()))
+            Ok(Denom(s.to_owned()))
         } else {
-            Err(ChainError::Denom {
-                name: s.to_string(),
-            })
+            Err(ChainError::Denom { name: s.to_owned() })
         }
     }
 }
@@ -110,5 +108,11 @@ impl TryFrom<Denom> for cosmrs::Denom {
 
     fn try_from(d: Denom) -> Result<Self, Self::Error> {
         d.0.parse().map_err(|_| ChainError::Denom { name: d.0 })
+    }
+}
+
+impl From<Denom> for String {
+    fn from(d: Denom) -> Self {
+        d.0
     }
 }

@@ -45,10 +45,10 @@ impl Cosmwasm {
                 .transpose()
                 .map_err(|e| CosmwasmError::InstantiatePerms { source: e })?,
         }
-        .to_any()
+        .into_any()
         .map_err(ChainError::proto_encoding)?;
 
-        let tx_raw = sign_tx(client, msg, key, &sender_addr, tx_options).await?;
+        let tx_raw = sign_tx(client, msg, key, sender_addr, tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
@@ -59,7 +59,7 @@ impl Cosmwasm {
             .parse::<u64>()
             .unwrap();
 
-        Ok(StoreCodeResponse { code_id, res: res })
+        Ok(StoreCodeResponse { code_id, res })
     }
 
     pub(crate) async fn wasm_instantiate<S, T, I>(
@@ -94,14 +94,14 @@ impl Cosmwasm {
             msg: payload,
             funds: cosm_funds,
         }
-        .to_any()
+        .into_any()
         .map_err(ChainError::proto_encoding)?;
 
-        let tx_raw = sign_tx(client, msg, key, &sender_addr, tx_options).await?;
+        let tx_raw = sign_tx(client, msg, key, sender_addr, tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
-        let addr = res
+        let addr = &res
             .find_event_tag("instantiate".to_string(), "_contract_address".to_string())
             .ok_or(CosmwasmError::MissingEvent)?
             .value;
@@ -115,7 +115,7 @@ impl Cosmwasm {
     pub(crate) async fn wasm_execute<S, T, I>(
         &self,
         client: &CosmTome<T>,
-        address: &Address,
+        address: Address,
         msg: &S,
         key: &SigningKey,
         funds: I,
@@ -141,10 +141,10 @@ impl Cosmwasm {
             msg: payload,
             funds: cosm_funds,
         }
-        .to_any()
+        .into_any()
         .map_err(ChainError::proto_encoding)?;
 
-        let tx_raw = sign_tx(client, msg, key, &sender_addr, tx_options).await?;
+        let tx_raw = sign_tx(client, msg, key, sender_addr, tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
@@ -154,13 +154,13 @@ impl Cosmwasm {
     pub(crate) async fn wasm_query<S: Serialize, T: CosmosClient>(
         &self,
         client: &CosmTome<T>,
-        address: &Address,
+        address: Address,
         msg: &S,
     ) -> Result<QueryResponse, CosmwasmError> {
         let payload = serde_json::to_vec(msg).map_err(CosmwasmError::json)?;
 
         let req = QuerySmartContractStateRequest {
-            address: address.to_string(),
+            address: address.into(),
             query_data: payload,
         };
 
@@ -178,7 +178,7 @@ impl Cosmwasm {
     pub async fn migrate<T: CosmosClient>(
         &self,
         client: &CosmTome<T>,
-        address: &Address,
+        address: Address,
         new_code_id: u64,
         payload: Vec<u8>,
         key: &SigningKey,
@@ -192,10 +192,10 @@ impl Cosmwasm {
             code_id: new_code_id,
             msg: payload,
         }
-        .to_any()
+        .into_any()
         .map_err(ChainError::proto_encoding)?;
 
-        let tx_raw = sign_tx(client, msg, key, &sender_addr, tx_options).await?;
+        let tx_raw = sign_tx(client, msg, key, sender_addr, tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 

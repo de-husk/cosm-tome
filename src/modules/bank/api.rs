@@ -36,8 +36,8 @@ impl Bank {
     pub(crate) async fn bank_send<T, I>(
         &self,
         client: &CosmTome<T>,
-        from: &Address,
-        to: &Address,
+        from: Address,
+        to: Address,
         amounts: I,
         key: &SigningKey,
         tx_options: &TxOptions,
@@ -68,7 +68,7 @@ impl Bank {
         .to_any()
         .map_err(ChainError::proto_encoding)?;
 
-        let tx_raw = sign_tx(client, msg, key, &sender_addr, tx_options).await?;
+        let tx_raw = sign_tx(client, msg, key, sender_addr, tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
@@ -79,12 +79,12 @@ impl Bank {
     pub(crate) async fn bank_query_balance<T: CosmosClient>(
         &self,
         client: &CosmTome<T>,
-        address: &Address,
+        address: Address,
         denom: Denom,
     ) -> Result<BalanceResponse, BankError> {
         let req = QueryBalanceRequest {
-            address: address.to_string(),
-            denom: denom.to_string(),
+            address: address.into(),
+            denom: denom.into(),
         };
 
         let res = client
@@ -105,11 +105,11 @@ impl Bank {
     pub(crate) async fn bank_query_balances<T: CosmosClient>(
         &self,
         client: &CosmTome<T>,
-        address: &Address,
+        address: Address,
         pagination: Option<PaginationRequest>,
     ) -> Result<BalancesResponse, BankError> {
         let req = QueryAllBalancesRequest {
-            address: address.to_string(),
+            address: address.into(),
             pagination: pagination.map(Into::into),
         };
 
@@ -137,11 +137,11 @@ impl Bank {
     pub(crate) async fn bank_query_spendable_balances<T: CosmosClient>(
         &self,
         client: &CosmTome<T>,
-        address: &Address,
+        address: Address,
         pagination: Option<PaginationRequest>,
     ) -> Result<BalancesResponse, BankError> {
         let req = QuerySpendableBalancesRequest {
-            address: address.to_string(),
+            address: address.into(),
             pagination: pagination.map(Into::into),
         };
 
@@ -172,7 +172,7 @@ impl Bank {
         denom: Denom,
     ) -> Result<BalanceResponse, BankError> {
         let req = QuerySupplyOfRequest {
-            denom: denom.to_string(),
+            denom: denom.into(),
         };
 
         let res = client
@@ -226,7 +226,7 @@ impl Bank {
         denom: Denom,
     ) -> Result<DenomMetadataResponse, BankError> {
         let req = QueryDenomMetadataRequest {
-            denom: denom.to_string(),
+            denom: denom.into(),
         };
 
         let res = client

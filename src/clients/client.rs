@@ -17,7 +17,7 @@ use crate::modules::bank::error::BankError;
 use crate::modules::bank::model::{
     BalanceResponse, BalancesResponse, DenomMetadataResponse, DenomsMetadataResponse, SendResponse,
 };
-use crate::modules::cosmwasm::model::{ExecResponse, QueryResponse};
+use crate::modules::cosmwasm::model::{ExecResponse, MigrateResponse, QueryResponse};
 use crate::{
     config::config::ChainConfig,
     key::key::SigningKey,
@@ -93,7 +93,7 @@ impl<T: CosmosClient> CosmTome<T> {
             pub async fn auth_query_account(
                 &self,
                 [&self],
-                address: &Address
+                address: Address
             ) -> Result<AccountResponse, AccountError>;
 
             pub async fn auth_query_accounts(
@@ -112,8 +112,8 @@ impl<T: CosmosClient> CosmTome<T> {
             pub async fn bank_send<I>(
                 &self,
                 [&self],
-                from: &Address,
-                to: &Address,
+                from: Address,
+                to: Address,
                 amounts: I,
                 key: &SigningKey,
                 tx_options: &TxOptions,
@@ -124,21 +124,21 @@ impl<T: CosmosClient> CosmTome<T> {
             pub async fn bank_query_balance(
                 &self,
                 [&self],
-                address: &Address,
+                address: Address,
                 denom: Denom,
             ) -> Result<BalanceResponse, BankError>;
 
             pub async fn bank_query_balances(
                 &self,
                 [&self],
-                address: &Address,
+                address: Address,
                 pagination: Option<PaginationRequest>,
             ) -> Result<BalancesResponse, BankError>;
 
             pub async fn bank_query_spendable_balances(
                 &self,
                 [&self],
-                address: &Address,
+                address: Address,
                 pagination: Option<PaginationRequest>,
             ) -> Result<BalancesResponse, BankError>;
 
@@ -200,7 +200,7 @@ impl<T: CosmosClient> CosmTome<T> {
             pub async fn wasm_execute<S, I>(
                 &self,
                 [&self],
-                address: &Address,
+                address: Address,
                 msg: &S,
                 key: &SigningKey,
                 funds: I,
@@ -213,9 +213,19 @@ impl<T: CosmosClient> CosmTome<T> {
             pub async fn wasm_query<S: Serialize>(
                 &self,
                 [&self],
-                address: &Address,
+                address: Address,
                 msg: &S,
             ) -> Result<QueryResponse, CosmwasmError> ;
+
+            pub async fn migrate(
+                &self,
+                [&self],
+                address: Address,
+                new_code_id: u64,
+                payload: Vec<u8>,
+                key: &SigningKey,
+                tx_options: &TxOptions,
+            ) -> Result<MigrateResponse, CosmwasmError>;
         }
     }
 }

@@ -18,10 +18,10 @@ impl Auth {
     pub(crate) async fn auth_query_account<T: CosmosClient>(
         &self,
         client: &CosmTome<T>,
-        address: &Address,
+        address: Address,
     ) -> Result<AccountResponse, AccountError> {
         let req = QueryAccountRequest {
-            address: address.to_string(),
+            address: address.into(),
         };
 
         let res = client
@@ -32,8 +32,8 @@ impl Auth {
             )
             .await?;
 
-        let account = res.account.ok_or(AccountError::AccountId {
-            id: address.to_string(),
+        let account = res.account.ok_or(AccountError::Address {
+            message: "Invalid account address".to_string(),
         })?;
 
         let base_account = BaseAccount::decode(account.value.as_slice())

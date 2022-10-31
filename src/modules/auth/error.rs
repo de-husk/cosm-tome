@@ -4,8 +4,8 @@ use crate::chain::error::ChainError;
 
 #[derive(Error, Debug)]
 pub enum AccountError {
-    #[error("invalid account ID: {id:?}")]
-    AccountId { id: String },
+    #[error("invalid account Address")]
+    Address { message: String },
 
     #[error("cannot parse account ID from bytes")]
     AccountIdParse { message: String },
