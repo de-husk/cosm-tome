@@ -71,9 +71,7 @@ fn mnemonic_to_signing_key(mnemonic: &str) -> Result<secp256k1::SigningKey, Chai
     let seed = bip32::Mnemonic::new(mnemonic, bip32::Language::English)
         .map_err(|_| ChainError::Mnemonic)?
         .to_seed("");
-    Ok(
-        secp256k1::SigningKey::derive_from_path(seed, &DERVIATION_PATH.parse().unwrap())
-            .map_err(|_| ChainError::DerviationPath)?
-            .into(),
-    )
+
+    secp256k1::SigningKey::derive_from_path(seed, &DERVIATION_PATH.parse().unwrap())
+        .map_err(|_| ChainError::DerviationPath)
 }

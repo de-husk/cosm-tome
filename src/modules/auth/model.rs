@@ -68,7 +68,7 @@ impl From<Address> for AccountId {
 
 impl From<Address> for String {
     fn from(address: Address) -> Self {
-        // TODO: Replace to_string() with into() once this is merged and released:
+        // TODO: Replace to_string() with into() once this is released:
         // https://github.com/cosmos/cosmos-rust/pull/301/files
         address.0.to_string()
     }

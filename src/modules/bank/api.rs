@@ -5,13 +5,10 @@ use cosmos_sdk_proto::cosmos::bank::v1beta1::{
     QuerySpendableBalancesRequest, QuerySpendableBalancesResponse, QuerySupplyOfRequest,
     QuerySupplyOfResponse, QueryTotalSupplyRequest, QueryTotalSupplyResponse,
 };
-use cosmrs::bank::MsgSend;
-use cosmrs::tx::Msg;
 
 use crate::{
     chain::{
-        coin::{Coin, Denom},
-        error::ChainError,
+        coin::Denom,
         request::{PaginationRequest, TxOptions},
         tx::sign_tx,
     },
@@ -24,7 +21,7 @@ use super::{
     error::BankError,
     model::{
         BalanceResponse, BalancesResponse, DenomMetadataResponse, DenomsMetadataResponse,
-        ParamsResponse,
+        ParamsResponse, SendRequest,
     },
 };
 
@@ -33,42 +30,39 @@ pub struct Bank {}
 
 impl Bank {
     /// Send `amount` of funds from source (`from`) Address to destination (`to`) Address
-    pub(crate) async fn bank_send<T, I>(
+    pub(crate) async fn bank_send<T>(
         &self,
         client: &CosmTome<T>,
-        from: Address,
-        to: Address,
-        amounts: I,
+        req: SendRequest,
         key: &SigningKey,
         tx_options: &TxOptions,
     ) -> Result<SendResponse, BankError>
     where
         T: CosmosClient,
-        I: IntoIterator<Item = Coin>,
+    {
+        self.bank_send_batch(client, vec![req], key, tx_options)
+            .await
+    }
+
+    pub(crate) async fn bank_send_batch<T, I>(
+        &self,
+        client: &CosmTome<T>,
+        reqs: I,
+        key: &SigningKey,
+        tx_options: &TxOptions,
+    ) -> Result<SendResponse, BankError>
+    where
+        T: CosmosClient,
+        I: IntoIterator<Item = SendRequest>,
     {
         let sender_addr = key.to_addr(&client.cfg.prefix)?;
 
-        let mut cosm_funds = vec![];
-        for amount in amounts {
-            if amount.amount == 0 {
-                return Err(BankError::EmptyAmount);
-            }
-            cosm_funds.push(amount.try_into()?);
-        }
+        let msgs = reqs
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()?;
 
-        if cosm_funds.len() == 0 {
-            return Err(BankError::EmptyAmount);
-        }
-
-        let msg = MsgSend {
-            from_address: from.into(),
-            to_address: to.into(),
-            amount: cosm_funds,
-        }
-        .to_any()
-        .map_err(ChainError::proto_encoding)?;
-
-        let tx_raw = sign_tx(client, msg, key, sender_addr, tx_options).await?;
+        let tx_raw = sign_tx(client, msgs, key, sender_addr, tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 

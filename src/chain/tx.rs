@@ -15,18 +15,22 @@ use super::error::ChainError;
 use super::fee::Fee;
 use super::request::TxOptions;
 
-pub async fn sign_tx<T: CosmosClient>(
+pub async fn sign_tx<T, I>(
     client: &CosmTome<T>,
-    msg: Any,
+    msgs: I,
     key: &SigningKey,
     account_addr: Address,
     tx_options: &TxOptions,
-) -> Result<Raw, AccountError> {
+) -> Result<Raw, AccountError>
+where
+    T: CosmosClient,
+    I: IntoIterator<Item = Any>,
+{
     let timeout_height = tx_options.timeout_height.unwrap_or_default();
 
     // TODO: Stop cloning `tx`
     // Should I just use an Rc<>?
-    let tx = Body::new(vec![msg], &tx_options.memo, timeout_height);
+    let tx = Body::new(msgs, &tx_options.memo, timeout_height);
 
     let account = client.auth_query_account(account_addr).await?.account;
 
