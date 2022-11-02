@@ -11,20 +11,16 @@ use cosmos_sdk_proto::traits::Message;
 use super::error::AccountError;
 use super::model::{AccountResponse, AccountsResponse, Address, ParamsResponse};
 
-#[derive(Clone, Debug)]
-pub struct Auth {}
-
-impl Auth {
-    pub(crate) async fn auth_query_account<T: CosmosClient>(
+impl<T: CosmosClient> CosmTome<T> {
+    pub async fn auth_query_account(
         &self,
-        client: &CosmTome<T>,
         address: Address,
     ) -> Result<AccountResponse, AccountError> {
         let req = QueryAccountRequest {
             address: address.into(),
         };
 
-        let res = client
+        let res = self
             .client
             .query::<_, QueryAccountRequest, QueryAccountResponse>(
                 req,
@@ -44,16 +40,15 @@ impl Auth {
         })
     }
 
-    pub(crate) async fn auth_query_accounts<T: CosmosClient>(
+    pub async fn auth_query_accounts(
         &self,
-        client: &CosmTome<T>,
         pagination: Option<PaginationRequest>,
     ) -> Result<AccountsResponse, AccountError> {
         let req = QueryAccountsRequest {
             pagination: pagination.map(Into::into),
         };
 
-        let res = client
+        let res = self
             .client
             .query::<_, QueryAccountsRequest, QueryAccountsResponse>(
                 req,
@@ -77,13 +72,10 @@ impl Auth {
         })
     }
 
-    pub(crate) async fn auth_query_params<T: CosmosClient>(
-        &self,
-        client: &CosmTome<T>,
-    ) -> Result<ParamsResponse, AccountError> {
+    pub async fn auth_query_params(&self) -> Result<ParamsResponse, AccountError> {
         let req = QueryParamsRequest {};
 
-        let res = client
+        let res = self
             .client
             .query::<_, QueryParamsRequest, QueryParamsResponse>(
                 req,
