@@ -1,7 +1,23 @@
-use cosmos_sdk_proto::cosmos::{self, bank::v1beta1::Metadata};
+use std::fmt;
+
+use cosmos_sdk_proto::traits::MessageExt;
+use cosmos_sdk_proto::{
+    cosmos::{
+        self,
+        bank::v1beta1::{Metadata, MsgSend},
+    },
+    Any,
+};
 use serde::{Deserialize, Serialize};
 
-use crate::chain::{coin::Coin, request::PaginationResponse, response::ChainTxResponse};
+use crate::{
+    chain::{
+        coin::Coin, error::ChainError, request::PaginationResponse, response::ChainTxResponse,
+    },
+    modules::auth::model::Address,
+};
+
+use super::error::BankError;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct BalanceResponse {
@@ -162,6 +178,84 @@ impl From<SendEnabled> for cosmos::bank::v1beta1::SendEnabled {
             denom: se.denom,
             enabled: se.enabled,
         }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct SendRequest {
+    pub from: Address,
+    pub to: Address,
+    pub amounts: Vec<Coin>,
+}
+
+pub type SendRequestProto = SendRequest;
+
+impl fmt::Display for SendRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} sends ", self.from)?;
+
+        for a in &self.amounts {
+            write!(f, "{} ", a)?;
+        }
+
+        write!(f, "-> {}", self.to)
+    }
+}
+
+impl TryFrom<SendRequest> for Any {
+    type Error = BankError;
+
+    fn try_from(req: SendRequest) -> Result<Self, Self::Error> {
+        let proto: MsgSend = req.try_into()?;
+        Ok(proto.to_any().map_err(ChainError::prost_proto_encoding)?)
+    }
+}
+
+impl TryFrom<Any> for SendRequest {
+    type Error = BankError;
+
+    fn try_from(any: Any) -> Result<Self, Self::Error> {
+        MsgSend::from_any(&any)
+            .map_err(ChainError::prost_proto_decoding)?
+            .try_into()
+    }
+}
+
+impl TryFrom<MsgSend> for SendRequest {
+    type Error = BankError;
+
+    fn try_from(msg: MsgSend) -> Result<Self, Self::Error> {
+        Ok(Self {
+            from: msg.from_address.parse()?,
+            to: msg.to_address.parse()?,
+            amounts: msg
+                .amount
+                .into_iter()
+                .map(TryFrom::try_from)
+                .collect::<Result<Vec<_>, _>>()?,
+        })
+    }
+}
+
+impl TryFrom<SendRequest> for MsgSend {
+    type Error = BankError;
+
+    fn try_from(req: SendRequest) -> Result<Self, Self::Error> {
+        if req.amounts.len() == 0 {
+            return Err(BankError::EmptyAmount);
+        }
+
+        for amount in &req.amounts {
+            if amount.amount == 0 {
+                return Err(BankError::EmptyAmount);
+            }
+        }
+
+        Ok(Self {
+            from_address: req.from.into(),
+            to_address: req.to.into(),
+            amount: req.amounts.into_iter().map(Into::into).collect(),
+        })
     }
 }
 

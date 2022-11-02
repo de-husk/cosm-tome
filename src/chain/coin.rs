@@ -13,7 +13,7 @@ pub struct Coin {
 
 impl fmt::Display for Coin {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} {}", self.amount, self.denom)
+        write!(f, "{}{}", self.amount, self.denom)
     }
 }
 

@@ -65,17 +65,18 @@ pub struct ChainTxResponse {
 }
 
 impl ChainTxResponse {
-    pub fn find_event_tag(&self, event_type: String, key_name: String) -> Option<&Tag> {
+    pub fn find_event_tags(&self, event_type: String, key_name: String) -> Vec<&Tag> {
+        let mut events = vec![];
         for event in &self.events {
             if event.type_str == event_type {
                 for attr in &event.attributes {
                     if attr.key == key_name {
-                        return Some(attr);
+                        events.push(attr);
                     }
                 }
             }
         }
-        None
+        events
     }
 }
 

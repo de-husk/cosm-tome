@@ -4,11 +4,8 @@ use serde::Serialize;
 use cosmos_sdk_proto::cosmwasm::wasm::v1::{
     AccessConfig, QuerySmartContractStateRequest, QuerySmartContractStateResponse,
 };
-use cosmrs::cosmwasm::{
-    MsgExecuteContract, MsgInstantiateContract, MsgMigrateContract, MsgStoreCode,
-};
+use cosmrs::cosmwasm::MsgStoreCode;
 
-use crate::chain::coin::Coin;
 use crate::chain::error::ChainError;
 use crate::chain::request::TxOptions;
 use crate::chain::tx::sign_tx;
@@ -17,7 +14,10 @@ use crate::clients::client::CosmTome;
 use crate::modules::auth::model::Address;
 use crate::{clients::client::CosmosClient, key::key::SigningKey};
 
-use super::model::{ExecResponse, MigrateResponse, QueryResponse};
+use super::model::{
+    ExecRequest, ExecResponse, InstantiateBatchResponse, InstantiateRequest, MigrateRequest,
+    MigrateResponse, QueryResponse,
+};
 use super::{
     error::CosmwasmError,
     model::{InstantiateResponse, StoreCodeResponse},
@@ -27,6 +27,8 @@ use super::{
 pub struct Cosmwasm {}
 
 impl Cosmwasm {
+    /// We do not expose a batch version of `wasm_store` because the txs are already
+    /// extremely large because we must send the wasm binary as well.
     pub(crate) async fn wasm_store<T: CosmosClient>(
         &self,
         client: &CosmTome<T>,
@@ -48,12 +50,13 @@ impl Cosmwasm {
         .into_any()
         .map_err(ChainError::proto_encoding)?;
 
-        let tx_raw = sign_tx(client, msg, key, sender_addr, tx_options).await?;
+        let tx_raw = sign_tx(client, vec![msg], key, sender_addr, tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
         let code_id = res
-            .find_event_tag("store_code".to_string(), "code_id".to_string())
+            .find_event_tags("store_code".to_string(), "code_id".to_string())
+            .get(0)
             .ok_or(CosmwasmError::MissingEvent)?
             .value
             .parse::<u64>()
@@ -62,89 +65,113 @@ impl Cosmwasm {
         Ok(StoreCodeResponse { code_id, res })
     }
 
-    pub(crate) async fn wasm_instantiate<S, T, I>(
+    pub(crate) async fn wasm_instantiate<S, T>(
         &self,
         client: &CosmTome<T>,
-        code_id: u64,
-        msg: &S,
-        label: String,
+        req: InstantiateRequest<S>,
         key: &SigningKey,
-        admin: Option<Address>,
-        funds: I,
         tx_options: &TxOptions,
     ) -> Result<InstantiateResponse, CosmwasmError>
     where
         S: Serialize,
         T: CosmosClient,
-        I: IntoIterator<Item = Coin>,
     {
-        let payload = serde_json::to_vec(msg).map_err(CosmwasmError::json)?;
+        let mut res = self
+            .wasm_instantiate_batch(client, vec![req], key, tx_options)
+            .await?;
+
+        Ok(InstantiateResponse {
+            address: res.addresses.remove(0),
+            res: res.res,
+        })
+    }
+
+    pub(crate) async fn wasm_instantiate_batch<S, T, I>(
+        &self,
+        client: &CosmTome<T>,
+        reqs: I,
+        key: &SigningKey,
+        tx_options: &TxOptions,
+    ) -> Result<InstantiateBatchResponse, CosmwasmError>
+    where
+        S: Serialize,
+        T: CosmosClient,
+        I: IntoIterator<Item = InstantiateRequest<S>>,
+    {
         let sender_addr = key.to_addr(&client.cfg.prefix)?;
 
-        let mut cosm_funds = vec![];
-        for fund in funds {
-            cosm_funds.push(fund.try_into()?);
-        }
+        let protos = reqs
+            .into_iter()
+            .map(|r| r.to_proto(sender_addr.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
 
-        let msg = MsgInstantiateContract {
-            sender: sender_addr.clone().into(),
-            admin: admin.map(|s| s.into()),
-            code_id,
-            label: Some(label),
-            msg: payload,
-            funds: cosm_funds,
-        }
-        .into_any()
-        .map_err(ChainError::proto_encoding)?;
+        let msgs = protos
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()?;
 
-        let tx_raw = sign_tx(client, msg, key, sender_addr, tx_options).await?;
+        let tx_raw = sign_tx(client, msgs, key, sender_addr, tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
-        let addr = &res
-            .find_event_tag("instantiate".to_string(), "_contract_address".to_string())
-            .ok_or(CosmwasmError::MissingEvent)?
-            .value;
+        let events =
+            res.find_event_tags("instantiate".to_string(), "_contract_address".to_string());
 
-        Ok(InstantiateResponse {
-            address: addr.parse()?,
+        if events.is_empty() {
+            return Err(CosmwasmError::MissingEvent);
+        }
+
+        let addrs = events
+            .into_iter()
+            .map(|e| e.value.parse())
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(InstantiateBatchResponse {
+            addresses: addrs,
             res: res,
         })
     }
 
-    pub(crate) async fn wasm_execute<S, T, I>(
+    pub(crate) async fn wasm_execute<S, T>(
         &self,
         client: &CosmTome<T>,
-        address: Address,
-        msg: &S,
+        req: ExecRequest<S>,
         key: &SigningKey,
-        funds: I,
         tx_options: &TxOptions,
     ) -> Result<ExecResponse, CosmwasmError>
     where
         S: Serialize,
         T: CosmosClient,
-        I: IntoIterator<Item = Coin>,
     {
-        let payload = serde_json::to_vec(msg).map_err(CosmwasmError::json)?;
+        self.wasm_execute_batch(client, vec![req], key, tx_options)
+            .await
+    }
 
+    pub(crate) async fn wasm_execute_batch<S, T, I>(
+        &self,
+        client: &CosmTome<T>,
+        reqs: I,
+        key: &SigningKey,
+        tx_options: &TxOptions,
+    ) -> Result<ExecResponse, CosmwasmError>
+    where
+        S: Serialize,
+        T: CosmosClient,
+        I: IntoIterator<Item = ExecRequest<S>>,
+    {
         let sender_addr = key.to_addr(&client.cfg.prefix)?;
 
-        let mut cosm_funds = vec![];
-        for fund in funds {
-            cosm_funds.push(fund.try_into()?);
-        }
+        let protos = reqs
+            .into_iter()
+            .map(|r| r.to_proto(sender_addr.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
 
-        let msg = MsgExecuteContract {
-            sender: sender_addr.clone().into(),
-            contract: address.into(),
-            msg: payload,
-            funds: cosm_funds,
-        }
-        .into_any()
-        .map_err(ChainError::proto_encoding)?;
+        let msgs = protos
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()?;
 
-        let tx_raw = sign_tx(client, msg, key, sender_addr, tx_options).await?;
+        let tx_raw = sign_tx(client, msgs, key, sender_addr, tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
@@ -175,27 +202,45 @@ impl Cosmwasm {
         Ok(QueryResponse { res: res.into() })
     }
 
-    pub async fn migrate<T: CosmosClient>(
+    pub(crate) async fn migrate<S, T>(
         &self,
         client: &CosmTome<T>,
-        address: Address,
-        new_code_id: u64,
-        payload: Vec<u8>,
+        req: MigrateRequest<S>,
         key: &SigningKey,
         tx_options: &TxOptions,
-    ) -> Result<MigrateResponse, CosmwasmError> {
+    ) -> Result<MigrateResponse, CosmwasmError>
+    where
+        S: Serialize,
+        T: CosmosClient,
+    {
+        self.migrate_batch(client, vec![req], key, tx_options).await
+    }
+
+    pub(crate) async fn migrate_batch<S, T, I>(
+        &self,
+        client: &CosmTome<T>,
+        reqs: I,
+        key: &SigningKey,
+        tx_options: &TxOptions,
+    ) -> Result<MigrateResponse, CosmwasmError>
+    where
+        S: Serialize,
+        T: CosmosClient,
+        I: IntoIterator<Item = MigrateRequest<S>>,
+    {
         let sender_addr = key.to_addr(&client.cfg.prefix)?;
 
-        let msg = MsgMigrateContract {
-            sender: sender_addr.clone().into(),
-            contract: address.into(),
-            code_id: new_code_id,
-            msg: payload,
-        }
-        .into_any()
-        .map_err(ChainError::proto_encoding)?;
+        let protos = reqs
+            .into_iter()
+            .map(|r| r.to_proto(sender_addr.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
 
-        let tx_raw = sign_tx(client, msg, key, sender_addr, tx_options).await?;
+        let msgs = protos
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let tx_raw = sign_tx(client, msgs, key, sender_addr, tx_options).await?;
 
         let res = client.client.broadcast_tx(&tx_raw).await?;
 
