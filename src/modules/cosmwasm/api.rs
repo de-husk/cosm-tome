@@ -23,21 +23,17 @@ use super::{
     model::{InstantiateResponse, StoreCodeResponse},
 };
 
-#[derive(Clone, Debug)]
-pub struct Cosmwasm {}
-
-impl Cosmwasm {
-    /// We do not expose a batch version of `wasm_store` because the txs are already
-    /// extremely large because we must send the wasm binary as well.
-    pub(crate) async fn wasm_store<T: CosmosClient>(
+impl<T: CosmosClient> CosmTome<T> {
+    /// There is no batch version of `wasm_store` because the txs are already very large since
+    /// we send the entire wasm binary
+    pub async fn wasm_store(
         &self,
-        client: &CosmTome<T>,
         payload: Vec<u8>,
         key: &SigningKey,
         instantiate_perms: Option<AccessConfig>, // TODO: make my own type in chain::model
         tx_options: &TxOptions,
     ) -> Result<StoreCodeResponse, CosmwasmError> {
-        let sender_addr = key.to_addr(&client.cfg.prefix)?;
+        let sender_addr = key.to_addr(&self.cfg.prefix)?;
 
         let msg = MsgStoreCode {
             sender: sender_addr.clone().into(),
@@ -50,9 +46,9 @@ impl Cosmwasm {
         .into_any()
         .map_err(ChainError::proto_encoding)?;
 
-        let tx_raw = sign_tx(client, vec![msg], key, sender_addr, tx_options).await?;
+        let tx_raw = sign_tx(self, vec![msg], key, sender_addr, tx_options).await?;
 
-        let res = client.client.broadcast_tx(&tx_raw).await?;
+        let res = self.client.broadcast_tx(&tx_raw).await?;
 
         let code_id = res
             .find_event_tags("store_code".to_string(), "code_id".to_string())
@@ -65,9 +61,8 @@ impl Cosmwasm {
         Ok(StoreCodeResponse { code_id, res })
     }
 
-    pub(crate) async fn wasm_instantiate<S, T>(
+    pub async fn wasm_instantiate<S>(
         &self,
-        client: &CosmTome<T>,
         req: InstantiateRequest<S>,
         key: &SigningKey,
         tx_options: &TxOptions,
@@ -77,7 +72,7 @@ impl Cosmwasm {
         T: CosmosClient,
     {
         let mut res = self
-            .wasm_instantiate_batch(client, vec![req], key, tx_options)
+            .wasm_instantiate_batch(vec![req], key, tx_options)
             .await?;
 
         Ok(InstantiateResponse {
@@ -86,19 +81,17 @@ impl Cosmwasm {
         })
     }
 
-    pub(crate) async fn wasm_instantiate_batch<S, T, I>(
+    pub async fn wasm_instantiate_batch<S, I>(
         &self,
-        client: &CosmTome<T>,
         reqs: I,
         key: &SigningKey,
         tx_options: &TxOptions,
     ) -> Result<InstantiateBatchResponse, CosmwasmError>
     where
         S: Serialize,
-        T: CosmosClient,
         I: IntoIterator<Item = InstantiateRequest<S>>,
     {
-        let sender_addr = key.to_addr(&client.cfg.prefix)?;
+        let sender_addr = key.to_addr(&self.cfg.prefix)?;
 
         let protos = reqs
             .into_iter()
@@ -110,9 +103,9 @@ impl Cosmwasm {
             .map(TryInto::try_into)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let tx_raw = sign_tx(client, msgs, key, sender_addr, tx_options).await?;
+        let tx_raw = sign_tx(self, msgs, key, sender_addr, tx_options).await?;
 
-        let res = client.client.broadcast_tx(&tx_raw).await?;
+        let res = self.client.broadcast_tx(&tx_raw).await?;
 
         let events =
             res.find_event_tags("instantiate".to_string(), "_contract_address".to_string());
@@ -132,34 +125,29 @@ impl Cosmwasm {
         })
     }
 
-    pub(crate) async fn wasm_execute<S, T>(
+    pub async fn wasm_execute<S>(
         &self,
-        client: &CosmTome<T>,
         req: ExecRequest<S>,
         key: &SigningKey,
         tx_options: &TxOptions,
     ) -> Result<ExecResponse, CosmwasmError>
     where
         S: Serialize,
-        T: CosmosClient,
     {
-        self.wasm_execute_batch(client, vec![req], key, tx_options)
-            .await
+        self.wasm_execute_batch(vec![req], key, tx_options).await
     }
 
-    pub(crate) async fn wasm_execute_batch<S, T, I>(
+    pub async fn wasm_execute_batch<S, I>(
         &self,
-        client: &CosmTome<T>,
         reqs: I,
         key: &SigningKey,
         tx_options: &TxOptions,
     ) -> Result<ExecResponse, CosmwasmError>
     where
         S: Serialize,
-        T: CosmosClient,
         I: IntoIterator<Item = ExecRequest<S>>,
     {
-        let sender_addr = key.to_addr(&client.cfg.prefix)?;
+        let sender_addr = key.to_addr(&self.cfg.prefix)?;
 
         let protos = reqs
             .into_iter()
@@ -171,16 +159,15 @@ impl Cosmwasm {
             .map(TryInto::try_into)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let tx_raw = sign_tx(client, msgs, key, sender_addr, tx_options).await?;
+        let tx_raw = sign_tx(self, msgs, key, sender_addr, tx_options).await?;
 
-        let res = client.client.broadcast_tx(&tx_raw).await?;
+        let res = self.client.broadcast_tx(&tx_raw).await?;
 
         Ok(ExecResponse { res })
     }
 
-    pub(crate) async fn wasm_query<S: Serialize, T: CosmosClient>(
+    pub async fn wasm_query<S: Serialize>(
         &self,
-        client: &CosmTome<T>,
         address: Address,
         msg: &S,
     ) -> Result<QueryResponse, CosmwasmError> {
@@ -191,7 +178,7 @@ impl Cosmwasm {
             query_data: payload,
         };
 
-        let res = client
+        let res = self
             .client
             .query::<_, QuerySmartContractStateRequest, QuerySmartContractStateResponse>(
                 req,
@@ -202,33 +189,29 @@ impl Cosmwasm {
         Ok(QueryResponse { res: res.into() })
     }
 
-    pub(crate) async fn migrate<S, T>(
+    pub async fn migrate<S>(
         &self,
-        client: &CosmTome<T>,
         req: MigrateRequest<S>,
         key: &SigningKey,
         tx_options: &TxOptions,
     ) -> Result<MigrateResponse, CosmwasmError>
     where
         S: Serialize,
-        T: CosmosClient,
     {
-        self.migrate_batch(client, vec![req], key, tx_options).await
+        self.migrate_batch(vec![req], key, tx_options).await
     }
 
-    pub(crate) async fn migrate_batch<S, T, I>(
+    pub async fn migrate_batch<S, I>(
         &self,
-        client: &CosmTome<T>,
         reqs: I,
         key: &SigningKey,
         tx_options: &TxOptions,
     ) -> Result<MigrateResponse, CosmwasmError>
     where
         S: Serialize,
-        T: CosmosClient,
         I: IntoIterator<Item = MigrateRequest<S>>,
     {
-        let sender_addr = key.to_addr(&client.cfg.prefix)?;
+        let sender_addr = key.to_addr(&self.cfg.prefix)?;
 
         let protos = reqs
             .into_iter()
@@ -240,9 +223,9 @@ impl Cosmwasm {
             .map(TryInto::try_into)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let tx_raw = sign_tx(client, msgs, key, sender_addr, tx_options).await?;
+        let tx_raw = sign_tx(self, msgs, key, sender_addr, tx_options).await?;
 
-        let res = client.client.broadcast_tx(&tx_raw).await?;
+        let res = self.client.broadcast_tx(&tx_raw).await?;
 
         Ok(MigrateResponse { res })
     }

@@ -25,54 +25,43 @@ use super::{
     },
 };
 
-#[derive(Clone, Debug)]
-pub struct Bank {}
-
-impl Bank {
+impl<T: CosmosClient> CosmTome<T> {
     /// Send `amount` of funds from source (`from`) Address to destination (`to`) Address
-    pub(crate) async fn bank_send<T>(
+    pub async fn bank_send(
         &self,
-        client: &CosmTome<T>,
         req: SendRequest,
         key: &SigningKey,
         tx_options: &TxOptions,
-    ) -> Result<SendResponse, BankError>
-    where
-        T: CosmosClient,
-    {
-        self.bank_send_batch(client, vec![req], key, tx_options)
-            .await
+    ) -> Result<SendResponse, BankError> {
+        self.bank_send_batch(vec![req], key, tx_options).await
     }
 
-    pub(crate) async fn bank_send_batch<T, I>(
+    pub async fn bank_send_batch<I>(
         &self,
-        client: &CosmTome<T>,
         reqs: I,
         key: &SigningKey,
         tx_options: &TxOptions,
     ) -> Result<SendResponse, BankError>
     where
-        T: CosmosClient,
         I: IntoIterator<Item = SendRequest>,
     {
-        let sender_addr = key.to_addr(&client.cfg.prefix)?;
+        let sender_addr = key.to_addr(&self.cfg.prefix)?;
 
         let msgs = reqs
             .into_iter()
             .map(TryInto::try_into)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let tx_raw = sign_tx(client, msgs, key, sender_addr, tx_options).await?;
+        let tx_raw = sign_tx(self, msgs, key, sender_addr, tx_options).await?;
 
-        let res = client.client.broadcast_tx(&tx_raw).await?;
+        let res = self.client.broadcast_tx(&tx_raw).await?;
 
         Ok(SendResponse { res })
     }
 
     /// Query the amount of `denom` currently held by an `address`
-    pub(crate) async fn bank_query_balance<T: CosmosClient>(
+    pub async fn bank_query_balance(
         &self,
-        client: &CosmTome<T>,
         address: Address,
         denom: Denom,
     ) -> Result<BalanceResponse, BankError> {
@@ -81,7 +70,7 @@ impl Bank {
             denom: denom.into(),
         };
 
-        let res = client
+        let res = self
             .client
             .query::<_, QueryBalanceRequest, QueryBalanceResponse>(
                 req,
@@ -96,9 +85,8 @@ impl Bank {
     }
 
     /// Query all denom balances held by an `address`
-    pub(crate) async fn bank_query_balances<T: CosmosClient>(
+    pub async fn bank_query_balances(
         &self,
-        client: &CosmTome<T>,
         address: Address,
         pagination: Option<PaginationRequest>,
     ) -> Result<BalancesResponse, BankError> {
@@ -107,7 +95,7 @@ impl Bank {
             pagination: pagination.map(Into::into),
         };
 
-        let res = client
+        let res = self
             .client
             .query::<_, QueryAllBalancesRequest, QueryAllBalancesResponse>(
                 req,
@@ -128,9 +116,8 @@ impl Bank {
     }
 
     /// Get total spendable balance for an `address` (not currently locked away via delegation for example)
-    pub(crate) async fn bank_query_spendable_balances<T: CosmosClient>(
+    pub async fn bank_query_spendable_balances(
         &self,
-        client: &CosmTome<T>,
         address: Address,
         pagination: Option<PaginationRequest>,
     ) -> Result<BalancesResponse, BankError> {
@@ -139,7 +126,7 @@ impl Bank {
             pagination: pagination.map(Into::into),
         };
 
-        let res = client
+        let res = self
             .client
             .query::<_, QuerySpendableBalancesRequest, QuerySpendableBalancesResponse>(
                 req,
@@ -160,16 +147,12 @@ impl Bank {
     }
 
     /// Query global supply of `denom` for all accounts
-    pub(crate) async fn bank_query_supply<T: CosmosClient>(
-        &self,
-        client: &CosmTome<T>,
-        denom: Denom,
-    ) -> Result<BalanceResponse, BankError> {
+    pub async fn bank_query_supply(&self, denom: Denom) -> Result<BalanceResponse, BankError> {
         let req = QuerySupplyOfRequest {
             denom: denom.into(),
         };
 
-        let res = client
+        let res = self
             .client
             .query::<_, QuerySupplyOfRequest, QuerySupplyOfResponse>(
                 req,
@@ -184,16 +167,15 @@ impl Bank {
     }
 
     /// Query global supply of all denoms for all accounts
-    pub(crate) async fn bank_query_total_supply<T: CosmosClient>(
+    pub async fn bank_query_total_supply(
         &self,
-        client: &CosmTome<T>,
         pagination: Option<PaginationRequest>,
     ) -> Result<BalancesResponse, BankError> {
         let req = QueryTotalSupplyRequest {
             pagination: pagination.map(Into::into),
         };
 
-        let res = client
+        let res = self
             .client
             .query::<_, QueryTotalSupplyRequest, QueryTotalSupplyResponse>(
                 req,
@@ -214,16 +196,15 @@ impl Bank {
     }
 
     /// Query bank metadata for a single denom
-    pub(crate) async fn bank_query_denom_metadata<T: CosmosClient>(
+    pub async fn bank_query_denom_metadata(
         &self,
-        client: &CosmTome<T>,
         denom: Denom,
     ) -> Result<DenomMetadataResponse, BankError> {
         let req = QueryDenomMetadataRequest {
             denom: denom.into(),
         };
 
-        let res = client
+        let res = self
             .client
             .query::<_, QueryDenomMetadataRequest, QueryDenomMetadataResponse>(
                 req,
@@ -237,16 +218,15 @@ impl Bank {
     }
 
     /// Query bank metadata for all denoms
-    pub(crate) async fn bank_query_denoms_metadata<T: CosmosClient>(
+    pub async fn bank_query_denoms_metadata(
         &self,
-        client: &CosmTome<T>,
         pagination: Option<PaginationRequest>,
     ) -> Result<DenomsMetadataResponse, BankError> {
         let req = QueryDenomsMetadataRequest {
             pagination: pagination.map(Into::into),
         };
 
-        let res = client
+        let res = self
             .client
             .query::<_, QueryDenomsMetadataRequest, QueryDenomsMetadataResponse>(
                 req,
@@ -261,13 +241,10 @@ impl Bank {
     }
 
     /// Query bank module cosmos sdk params
-    pub(crate) async fn bank_query_params<T: CosmosClient>(
-        &self,
-        client: &CosmTome<T>,
-    ) -> Result<ParamsResponse, BankError> {
+    pub async fn bank_query_params(&self) -> Result<ParamsResponse, BankError> {
         let req = QueryParamsRequest {};
 
-        let res = client
+        let res = self
             .client
             .query::<_, QueryParamsRequest, QueryParamsResponse>(
                 req,
