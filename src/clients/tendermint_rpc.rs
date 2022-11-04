@@ -2,13 +2,12 @@ use async_trait::async_trait;
 use cosmos_sdk_proto::cosmos::tx::v1beta1::{SimulateRequest, SimulateResponse};
 use cosmos_sdk_proto::traits::Message;
 use cosmrs::rpc::HttpClient;
-use cosmrs::tendermint::abci::Code;
-use cosmrs::tx::Raw;
 use tendermint_rpc::Client;
 
 use crate::chain::error::ChainError;
 use crate::chain::fee::GasInfo;
-use crate::chain::response::ChainTxResponse;
+use crate::chain::response::{AsyncChainTxResponse, ChainTxResponse};
+use crate::modules::tx::model::{BroadcastMode, RawTx};
 
 use super::client::CosmosClient;
 
@@ -48,7 +47,7 @@ impl CosmosClient for TendermintRPC {
             .abci_query(Some(path.parse()?), bytes, None, false)
             .await?;
 
-        if res.code != Code::Ok {
+        if res.code.is_err() {
             return Err(ChainError::CosmosSdk { res: res.into() });
         }
 
@@ -59,10 +58,10 @@ impl CosmosClient for TendermintRPC {
     }
 
     #[allow(deprecated)]
-    async fn simulate_tx(&self, tx: &Raw) -> Result<GasInfo, ChainError> {
+    async fn simulate_tx(&self, tx: &RawTx) -> Result<GasInfo, ChainError> {
         let req = SimulateRequest {
             tx: None,
-            tx_bytes: tx.to_bytes().map_err(ChainError::proto_encoding)?,
+            tx_bytes: tx.to_bytes()?,
         };
 
         let bytes = TendermintRPC::encode_msg(req)?;
@@ -77,6 +76,10 @@ impl CosmosClient for TendermintRPC {
             )
             .await?;
 
+        if res.code.is_err() {
+            return Err(ChainError::CosmosSdk { res: res.into() });
+        }
+
         let gas_info = SimulateResponse::decode(res.value.as_slice())
             .map_err(ChainError::prost_proto_decoding)?
             .gas_info
@@ -85,11 +88,39 @@ impl CosmosClient for TendermintRPC {
         Ok(gas_info.into())
     }
 
-    async fn broadcast_tx(&self, tx: &Raw) -> Result<ChainTxResponse, ChainError> {
-        let res = tx
-            .broadcast_commit(&self.client)
+    async fn broadcast_tx(
+        &self,
+        tx: &RawTx,
+        mode: BroadcastMode,
+    ) -> Result<AsyncChainTxResponse, ChainError> {
+        let res: AsyncChainTxResponse = match mode {
+            BroadcastMode::Sync => self
+                .client
+                .broadcast_tx_sync(tx.to_bytes()?.into())
+                .await
+                .map_err(|e| ChainError::RPC(e))?
+                .into(),
+            BroadcastMode::Async => self
+                .client
+                .broadcast_tx_async(tx.to_bytes()?.into())
+                .await
+                .map_err(|e| ChainError::RPC(e))?
+                .into(),
+        };
+
+        if res.res.code.is_err() {
+            return Err(ChainError::CosmosSdk { res: res.res });
+        }
+
+        Ok(res)
+    }
+
+    async fn broadcast_tx_block(&self, tx: &RawTx) -> Result<ChainTxResponse, ChainError> {
+        let res = self
+            .client
+            .broadcast_tx_commit(tx.to_bytes()?.into())
             .await
-            .map_err(ChainError::proto_encoding)?;
+            .map_err(|e| ChainError::RPC(e))?;
 
         if res.check_tx.code.is_err() {
             return Err(ChainError::CosmosSdk {

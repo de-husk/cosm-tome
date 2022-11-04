@@ -10,7 +10,9 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use tendermint_rpc::endpoint::{
     abci_query::AbciQuery,
-    broadcast::tx_commit::{Response as TendermintResponse, TxResult},
+    broadcast::tx_async::Response as AsyncTendermintResponse,
+    broadcast::tx_commit::{Response as BlockingTendermintResponse, TxResult},
+    broadcast::tx_sync::Response as SyncTendermintResponse,
 };
 
 use super::error::{ChainError, DeserializeError};
@@ -54,6 +56,60 @@ impl From<TxResult> for ChainResponse {
     }
 }
 
+/// AsyncChainTxResponse is returned from the async `tx_broadcast()` api.
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
+pub struct AsyncChainTxResponse {
+    pub res: ChainResponse,
+    pub tx_hash: String,
+}
+
+impl AsRef<ChainResponse> for AsyncChainTxResponse {
+    fn as_ref(&self) -> &ChainResponse {
+        &self.res
+    }
+}
+
+impl From<CosmosResponse> for AsyncChainTxResponse {
+    fn from(res: CosmosResponse) -> Self {
+        Self {
+            res: ChainResponse {
+                code: res.code.into(),
+                data: Some(res.data.into()), // TODO
+                log: res.raw_log,
+            },
+            tx_hash: res.txhash,
+        }
+    }
+}
+
+impl From<AsyncTendermintResponse> for AsyncChainTxResponse {
+    fn from(res: AsyncTendermintResponse) -> Self {
+        Self {
+            res: ChainResponse {
+                code: res.code.into(),
+                data: Some(res.data.into()),
+                log: res.log.to_string(),
+            },
+            tx_hash: res.hash.to_string(),
+        }
+    }
+}
+
+impl From<SyncTendermintResponse> for AsyncChainTxResponse {
+    fn from(res: SyncTendermintResponse) -> Self {
+        Self {
+            res: ChainResponse {
+                code: res.code.into(),
+                data: Some(res.data.into()),
+                log: res.log.to_string(),
+            },
+            tx_hash: res.hash.to_string(),
+        }
+    }
+}
+
+/// ChainTxResponse is returned from the blocking `tx_broadcast_block()` api.
+/// Since we wait for the tx to be commited in the next block, we get the full tx data.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
 pub struct ChainTxResponse {
     pub res: ChainResponse,
@@ -86,8 +142,8 @@ impl AsRef<ChainResponse> for ChainTxResponse {
     }
 }
 
-impl From<TendermintResponse> for ChainTxResponse {
-    fn from(res: TendermintResponse) -> Self {
+impl From<BlockingTendermintResponse> for ChainTxResponse {
+    fn from(res: BlockingTendermintResponse) -> Self {
         ChainTxResponse {
             res: ChainResponse {
                 code: res.deliver_tx.code.into(),

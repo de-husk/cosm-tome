@@ -1,22 +1,18 @@
-use cosmrs::tx::Msg;
+use cosmos_sdk_proto::Any;
 use serde::Serialize;
 
-use cosmos_sdk_proto::cosmwasm::wasm::v1::{
-    AccessConfig, QuerySmartContractStateRequest, QuerySmartContractStateResponse,
-};
-use cosmrs::cosmwasm::MsgStoreCode;
-
-use crate::chain::error::ChainError;
 use crate::chain::request::TxOptions;
-use crate::chain::tx::sign_tx;
 use crate::clients::client::CosmTome;
+use cosmos_sdk_proto::cosmwasm::wasm::v1::{
+    QuerySmartContractStateRequest, QuerySmartContractStateResponse,
+};
 
 use crate::modules::auth::model::Address;
 use crate::{clients::client::CosmosClient, key::key::SigningKey};
 
 use super::model::{
     ExecRequest, ExecResponse, InstantiateBatchResponse, InstantiateRequest, MigrateRequest,
-    MigrateResponse, QueryResponse,
+    MigrateResponse, QueryResponse, StoreCodeRequest,
 };
 use super::{
     error::CosmwasmError,
@@ -28,27 +24,17 @@ impl<T: CosmosClient> CosmTome<T> {
     /// we send the entire wasm binary
     pub async fn wasm_store(
         &self,
-        payload: Vec<u8>,
+        req: StoreCodeRequest,
         key: &SigningKey,
-        instantiate_perms: Option<AccessConfig>, // TODO: make my own type in chain::model
         tx_options: &TxOptions,
     ) -> Result<StoreCodeResponse, CosmwasmError> {
         let sender_addr = key.to_addr(&self.cfg.prefix)?;
 
-        let msg = MsgStoreCode {
-            sender: sender_addr.clone().into(),
-            wasm_byte_code: payload,
-            instantiate_permission: instantiate_perms
-                .map(TryInto::try_into)
-                .transpose()
-                .map_err(|e| CosmwasmError::InstantiatePerms { source: e })?,
-        }
-        .into_any()
-        .map_err(ChainError::proto_encoding)?;
+        let msg: Any = req.to_proto(sender_addr)?.try_into()?;
 
-        let tx_raw = sign_tx(self, vec![msg], key, sender_addr, tx_options).await?;
+        let tx_raw = self.tx_sign(vec![msg], key, tx_options).await?;
 
-        let res = self.client.broadcast_tx(&tx_raw).await?;
+        let res = self.tx_broadcast_block(&tx_raw).await?;
 
         let code_id = res
             .find_event_tags("store_code".to_string(), "code_id".to_string())
@@ -103,9 +89,9 @@ impl<T: CosmosClient> CosmTome<T> {
             .map(TryInto::try_into)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let tx_raw = sign_tx(self, msgs, key, sender_addr, tx_options).await?;
+        let tx_raw = self.tx_sign(msgs, key, tx_options).await?;
 
-        let res = self.client.broadcast_tx(&tx_raw).await?;
+        let res = self.tx_broadcast_block(&tx_raw).await?;
 
         let events =
             res.find_event_tags("instantiate".to_string(), "_contract_address".to_string());
@@ -159,9 +145,9 @@ impl<T: CosmosClient> CosmTome<T> {
             .map(TryInto::try_into)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let tx_raw = sign_tx(self, msgs, key, sender_addr, tx_options).await?;
+        let tx_raw = self.tx_sign(msgs, key, tx_options).await?;
 
-        let res = self.client.broadcast_tx(&tx_raw).await?;
+        let res = self.tx_broadcast_block(&tx_raw).await?;
 
         Ok(ExecResponse { res })
     }
@@ -223,9 +209,9 @@ impl<T: CosmosClient> CosmTome<T> {
             .map(TryInto::try_into)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let tx_raw = sign_tx(self, msgs, key, sender_addr, tx_options).await?;
+        let tx_raw = self.tx_sign(msgs, key, tx_options).await?;
 
-        let res = self.client.broadcast_tx(&tx_raw).await?;
+        let res = self.tx_broadcast_block(&tx_raw).await?;
 
         Ok(MigrateResponse { res })
     }

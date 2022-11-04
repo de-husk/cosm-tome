@@ -1,8 +1,9 @@
+use cosmos_sdk_proto::cosmwasm::wasm::v1::MsgStoreCode;
 use cosmos_sdk_proto::traits::MessageExt;
 use cosmos_sdk_proto::{
     cosmwasm::wasm::v1::{
-        MsgExecuteContract, MsgInstantiateContract, MsgMigrateContract,
-        QuerySmartContractStateResponse,
+        AccessConfig as ProtoAccessConfig, AccessType as ProtoAccessType, MsgExecuteContract,
+        MsgInstantiateContract, MsgMigrateContract, QuerySmartContractStateResponse,
     },
     Any,
 };
@@ -18,6 +19,75 @@ use crate::{
 };
 
 use super::error::CosmwasmError;
+
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct StoreCodeRequest {
+    pub wasm_data: Vec<u8>,
+    pub instantiate_perms: Option<AccessConfig>,
+}
+
+impl StoreCodeRequest {
+    pub fn to_proto(self, signer_addr: Address) -> Result<StoreCodeProto, CosmwasmError> {
+        Ok(StoreCodeProto {
+            signer_addr,
+            wasm_data: self.wasm_data,
+            instantiate_perms: self.instantiate_perms,
+        })
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct StoreCodeProto {
+    pub signer_addr: Address,
+    pub wasm_data: Vec<u8>,
+    pub instantiate_perms: Option<AccessConfig>,
+}
+
+impl TryFrom<StoreCodeProto> for Any {
+    type Error = CosmwasmError;
+
+    fn try_from(req: StoreCodeProto) -> Result<Self, Self::Error> {
+        let proto: MsgStoreCode = req.try_into()?;
+        Ok(proto.to_any().map_err(ChainError::prost_proto_encoding)?)
+    }
+}
+
+impl TryFrom<Any> for StoreCodeProto {
+    type Error = CosmwasmError;
+
+    fn try_from(any: Any) -> Result<Self, Self::Error> {
+        MsgStoreCode::from_any(&any)
+            .map_err(ChainError::prost_proto_decoding)?
+            .try_into()
+    }
+}
+
+impl TryFrom<MsgStoreCode> for StoreCodeProto {
+    type Error = CosmwasmError;
+
+    fn try_from(msg: MsgStoreCode) -> Result<Self, Self::Error> {
+        Ok(Self {
+            signer_addr: msg.sender.parse()?,
+            wasm_data: msg.wasm_byte_code,
+            instantiate_perms: msg
+                .instantiate_permission
+                .map(TryFrom::try_from)
+                .transpose()?,
+        })
+    }
+}
+
+impl TryFrom<StoreCodeProto> for MsgStoreCode {
+    type Error = CosmwasmError;
+
+    fn try_from(req: StoreCodeProto) -> Result<Self, Self::Error> {
+        Ok(Self {
+            sender: req.signer_addr.into(),
+            wasm_byte_code: req.wasm_data,
+            instantiate_permission: req.instantiate_perms.map(Into::into),
+        })
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct StoreCodeResponse {
@@ -337,6 +407,110 @@ impl From<QuerySmartContractStateResponse> for ChainResponse {
             code: Code::Ok,
             data: Some(res.data),
             ..Default::default()
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct AccessConfig {
+    pub permission: AccessType,
+    pub account: Address,
+}
+
+impl From<AccessConfig> for cosmrs::cosmwasm::AccessConfig {
+    fn from(config: AccessConfig) -> Self {
+        Self {
+            permission: config.permission.into(),
+            address: config.account.into(),
+        }
+    }
+}
+
+impl From<cosmrs::cosmwasm::AccessConfig> for AccessConfig {
+    fn from(config: cosmrs::cosmwasm::AccessConfig) -> Self {
+        Self {
+            permission: config.permission.into(),
+            account: config.address.into(),
+        }
+    }
+}
+
+impl From<AccessConfig> for ProtoAccessConfig {
+    fn from(config: AccessConfig) -> Self {
+        Self {
+            permission: config.permission as i32,
+            address: config.account.into(),
+        }
+    }
+}
+
+impl TryFrom<ProtoAccessConfig> for AccessConfig {
+    type Error = CosmwasmError;
+
+    fn try_from(config: ProtoAccessConfig) -> Result<Self, Self::Error> {
+        Ok(Self {
+            permission: config.permission.try_into()?,
+            account: config.address.parse()?,
+        })
+    }
+}
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[repr(i32)]
+pub enum AccessType {
+    /// ACCESS_TYPE_UNSPECIFIED placeholder for empty value
+    Unspecified = 0,
+    /// ACCESS_TYPE_NOBODY forbidden TODO: better comments that explains what it actually does like we do in BroadcastMode
+    Nobody = 1,
+    /// ACCESS_TYPE_ONLY_ADDRESS restricted to an address
+    OnlyAddress = 2,
+    /// ACCESS_TYPE_EVERYBODY unrestricted
+    Everybody = 3,
+}
+
+impl AsRef<str> for AccessType {
+    fn as_ref(&self) -> &str {
+        match self {
+            AccessType::Unspecified => "ACCESS_TYPE_UNSPECIFIED",
+            AccessType::Nobody => "ACCESS_TYPE_NOBODY",
+            AccessType::OnlyAddress => "ACCESS_TYPE_ONLY_ADDRESS",
+            AccessType::Everybody => "ACCESS_TYPE_EVERYBODY",
+        }
+    }
+}
+
+impl TryFrom<i32> for AccessType {
+    type Error = CosmwasmError;
+
+    fn try_from(v: i32) -> Result<Self, Self::Error> {
+        match v {
+            x if x == AccessType::Unspecified as i32 => Ok(AccessType::Unspecified),
+            x if x == AccessType::Nobody as i32 => Ok(AccessType::Nobody),
+            x if x == AccessType::OnlyAddress as i32 => Ok(AccessType::OnlyAddress),
+            x if x == AccessType::Everybody as i32 => Ok(AccessType::Everybody),
+            _ => Err(CosmwasmError::AccessType { i: v }),
+        }
+    }
+}
+
+impl From<AccessType> for ProtoAccessType {
+    fn from(perm: AccessType) -> Self {
+        match perm {
+            AccessType::Unspecified => ProtoAccessType::Unspecified,
+            AccessType::Nobody => ProtoAccessType::Nobody,
+            AccessType::OnlyAddress => ProtoAccessType::OnlyAddress,
+            AccessType::Everybody => ProtoAccessType::Everybody,
+        }
+    }
+}
+
+impl From<ProtoAccessType> for AccessType {
+    fn from(perm: ProtoAccessType) -> Self {
+        match perm {
+            ProtoAccessType::Unspecified => AccessType::Unspecified,
+            ProtoAccessType::Nobody => AccessType::Nobody,
+            ProtoAccessType::OnlyAddress => AccessType::OnlyAddress,
+            ProtoAccessType::Everybody => AccessType::Everybody,
         }
     }
 }

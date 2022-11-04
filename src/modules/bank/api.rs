@@ -10,7 +10,6 @@ use crate::{
     chain::{
         coin::Denom,
         request::{PaginationRequest, TxOptions},
-        tx::sign_tx,
     },
     clients::client::{CosmTome, CosmosClient},
     key::key::SigningKey,
@@ -45,16 +44,14 @@ impl<T: CosmosClient> CosmTome<T> {
     where
         I: IntoIterator<Item = SendRequest>,
     {
-        let sender_addr = key.to_addr(&self.cfg.prefix)?;
-
         let msgs = reqs
             .into_iter()
             .map(TryInto::try_into)
             .collect::<Result<Vec<_>, _>>()?;
 
-        let tx_raw = sign_tx(self, msgs, key, sender_addr, tx_options).await?;
+        let tx_raw = self.tx_sign(msgs, key, tx_options).await?;
 
-        let res = self.client.broadcast_tx(&tx_raw).await?;
+        let res = self.tx_broadcast_block(&tx_raw).await?;
 
         Ok(SendResponse { res })
     }
