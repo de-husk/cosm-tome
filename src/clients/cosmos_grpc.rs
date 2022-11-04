@@ -1,14 +1,16 @@
 use async_trait::async_trait;
 use cosmos_sdk_proto::cosmos::tx::v1beta1::service_client::ServiceClient;
-use cosmos_sdk_proto::cosmos::tx::v1beta1::{BroadcastMode, BroadcastTxRequest, SimulateRequest};
+use cosmos_sdk_proto::cosmos::tx::v1beta1::{
+    BroadcastMode as ProtoBroadcastMode, BroadcastTxRequest, SimulateRequest,
+};
 use tonic::codec::ProstCodec;
 
 use cosmos_sdk_proto::traits::Message;
-use cosmrs::tx::Raw;
 
 use crate::chain::fee::GasInfo;
-use crate::chain::response::{ChainResponse, Code};
+use crate::chain::response::{AsyncChainTxResponse, ChainResponse, Code};
 use crate::chain::{error::ChainError, response::ChainTxResponse};
+use crate::modules::tx::model::{BroadcastMode, RawTx};
 
 use super::client::CosmosClient;
 
@@ -71,12 +73,12 @@ impl CosmosClient for CosmosgRPC {
     }
 
     #[allow(deprecated)]
-    async fn simulate_tx(&self, tx: &Raw) -> Result<GasInfo, ChainError> {
+    async fn simulate_tx(&self, tx: &RawTx) -> Result<GasInfo, ChainError> {
         let mut client = ServiceClient::connect(self.grpc_endpoint.clone()).await?;
 
         let req = SimulateRequest {
             tx: None,
-            tx_bytes: tx.to_bytes().map_err(ChainError::proto_encoding)?,
+            tx_bytes: tx.to_bytes()?,
         };
 
         let gas_info = client
@@ -96,12 +98,35 @@ impl CosmosClient for CosmosgRPC {
         Ok(gas_info.into())
     }
 
-    async fn broadcast_tx(&self, tx: &Raw) -> Result<ChainTxResponse, ChainError> {
+    async fn broadcast_tx(
+        &self,
+        tx: &RawTx,
+        mode: BroadcastMode,
+    ) -> Result<AsyncChainTxResponse, ChainError> {
         let mut client = ServiceClient::connect(self.grpc_endpoint.clone()).await?;
 
         let req = BroadcastTxRequest {
-            tx_bytes: tx.to_bytes().map_err(ChainError::proto_encoding)?,
-            mode: BroadcastMode::Block.into(),
+            tx_bytes: tx.to_bytes()?,
+            mode: mode as i32,
+        };
+
+        let res = client.broadcast_tx(req).await?.into_inner();
+
+        let res: AsyncChainTxResponse = res.tx_response.unwrap().into();
+
+        if res.res.code.is_err() {
+            return Err(ChainError::CosmosSdk { res: res.res });
+        }
+
+        Ok(res)
+    }
+
+    async fn broadcast_tx_block(&self, tx: &RawTx) -> Result<ChainTxResponse, ChainError> {
+        let mut client = ServiceClient::connect(self.grpc_endpoint.clone()).await?;
+
+        let req = BroadcastTxRequest {
+            tx_bytes: tx.to_bytes()?,
+            mode: ProtoBroadcastMode::Block.into(),
         };
 
         let res = client.broadcast_tx(req).await?.into_inner();

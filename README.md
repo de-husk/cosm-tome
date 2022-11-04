@@ -35,7 +35,7 @@ As more APIs are added to Cosmos SDK, we will simply add a new `CosmosClient` im
 | Params | 🚫 |
 | Slashing | 🚫 |
 | Staking | 🚫 |
-| Tx | 🚫 |
+| Tx | 🔨 |
 | Upgrade | 🚫 |
 | Vesting | 🚫 |
 | CosmWasm | 🔨 |

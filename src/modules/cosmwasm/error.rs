@@ -1,7 +1,9 @@
-use cosmrs::ErrorReport;
 use thiserror::Error;
 
-use crate::{chain::error::ChainError, modules::auth::error::AccountError};
+use crate::{
+    chain::error::ChainError,
+    modules::{auth::error::AccountError, tx::error::TxError},
+};
 
 #[derive(Error, Debug)]
 pub enum CosmwasmError {
@@ -12,8 +14,11 @@ pub enum CosmwasmError {
     #[error("invalid admin address")]
     AdminAddress,
 
-    #[error("invalid instantiate permissions")]
-    InstantiatePerms { source: ErrorReport },
+    #[error("unsupported instantiate permission AccessType: {i:?}")]
+    AccessType { i: i32 },
+
+    #[error(transparent)]
+    TxError(#[from] TxError),
 
     #[error(transparent)]
     AccountError(#[from] AccountError),

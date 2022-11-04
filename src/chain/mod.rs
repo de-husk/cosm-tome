@@ -8,4 +8,4 @@ pub mod fee;
 
 pub mod error;
 
-pub(crate) mod tx;
+pub use cosmos_sdk_proto::Any;
