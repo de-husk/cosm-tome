@@ -97,14 +97,12 @@ impl CosmosClient for TendermintRPC {
             BroadcastMode::Sync => self
                 .client
                 .broadcast_tx_sync(tx.to_bytes()?.into())
-                .await
-                .map_err(|e| ChainError::RPC(e))?
+                .await?
                 .into(),
             BroadcastMode::Async => self
                 .client
                 .broadcast_tx_async(tx.to_bytes()?.into())
-                .await
-                .map_err(|e| ChainError::RPC(e))?
+                .await?
                 .into(),
         };
 
@@ -119,8 +117,7 @@ impl CosmosClient for TendermintRPC {
         let res = self
             .client
             .broadcast_tx_commit(tx.to_bytes()?.into())
-            .await
-            .map_err(|e| ChainError::RPC(e))?;
+            .await?;
 
         if res.check_tx.code.is_err() {
             return Err(ChainError::CosmosSdk {

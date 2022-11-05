@@ -60,9 +60,9 @@ impl<T: CosmosClient> CosmTome<T> {
             .accounts
             .into_iter()
             .map(|a| {
-                let base_account = BaseAccount::decode(a.value.as_slice())
-                    .map_err(ChainError::prost_proto_decoding)?;
-                Ok(base_account.try_into()?)
+                BaseAccount::decode(a.value.as_slice())
+                    .map_err(ChainError::prost_proto_decoding)?
+                    .try_into()
             })
             .collect::<Result<Vec<Account>, AccountError>>()?;
 

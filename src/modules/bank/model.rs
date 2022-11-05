@@ -241,7 +241,7 @@ impl TryFrom<SendRequest> for MsgSend {
     type Error = BankError;
 
     fn try_from(req: SendRequest) -> Result<Self, Self::Error> {
-        if req.amounts.len() == 0 {
+        if req.amounts.is_empty() {
             return Err(BankError::EmptyAmount);
         }
 

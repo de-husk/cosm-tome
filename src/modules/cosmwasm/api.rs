@@ -8,7 +8,7 @@ use cosmos_sdk_proto::cosmwasm::wasm::v1::{
 };
 
 use crate::modules::auth::model::Address;
-use crate::{clients::client::CosmosClient, key::key::SigningKey};
+use crate::{clients::client::CosmosClient, signing_key::key::SigningKey};
 
 use super::model::{
     ExecRequest, ExecResponse, InstantiateBatchResponse, InstantiateRequest, MigrateRequest,
@@ -107,7 +107,7 @@ impl<T: CosmosClient> CosmTome<T> {
 
         Ok(InstantiateBatchResponse {
             addresses: addrs,
-            res: res,
+            res,
         })
     }
 
