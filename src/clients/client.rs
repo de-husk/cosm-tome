@@ -4,7 +4,7 @@ use cosmos_sdk_proto::traits::Message;
 use crate::chain::error::ChainError;
 use crate::chain::fee::GasInfo;
 use crate::chain::response::{AsyncChainTxResponse, ChainTxResponse};
-use crate::config::config::ChainConfig;
+use crate::config::cfg::ChainConfig;
 use crate::modules::tx::model::{BroadcastMode, RawTx};
 
 use super::cosmos_grpc::CosmosgRPC;

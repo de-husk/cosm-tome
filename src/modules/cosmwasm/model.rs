@@ -115,7 +115,7 @@ impl<S: Serialize> InstantiateRequest<S> {
         let payload = serde_json::to_vec(&self.msg).map_err(CosmwasmError::json)?;
 
         Ok(InstantiateRequestProto {
-            signer_addr: signer_addr,
+            signer_addr,
             code_id: self.code_id,
             msg: payload,
             label: self.label,
@@ -169,7 +169,7 @@ impl TryFrom<MsgInstantiateContract> for InstantiateRequestProto {
             code_id: msg.code_id,
             msg: msg.msg,
             label: msg.label,
-            admin: admin,
+            admin,
             funds: msg
                 .funds
                 .into_iter()

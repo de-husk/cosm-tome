@@ -19,7 +19,7 @@ impl From<PaginationRequest> for PageRequest {
         };
 
         PageRequest {
-            key: key,
+            key,
             offset: offset.offset,
             count_total: offset.count_total,
             limit: p.limit,
@@ -30,7 +30,7 @@ impl From<PaginationRequest> for PageRequest {
 
 impl From<PageRequest> for PaginationRequest {
     fn from(p: PageRequest) -> PaginationRequest {
-        let page = if p.key.len() == 0 {
+        let page = if p.key.is_empty() {
             PageID::Offset(OffsetParams {
                 offset: p.offset,
                 count_total: p.count_total,
@@ -40,7 +40,7 @@ impl From<PageRequest> for PaginationRequest {
         };
 
         PaginationRequest {
-            page: page,
+            page,
             limit: p.limit,
             reverse: p.reverse,
         }

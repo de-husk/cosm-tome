@@ -9,7 +9,7 @@ use crate::modules::auth::model::Account;
 use crate::{
     chain::{fee::Fee, request::TxOptions, response::ChainTxResponse, Any},
     clients::client::{CosmTome, CosmosClient},
-    key::key::SigningKey,
+    signing_key::key::SigningKey,
 };
 
 use super::error::TxError;

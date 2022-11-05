@@ -12,8 +12,8 @@ use crate::{
         request::{PaginationRequest, TxOptions},
     },
     clients::client::{CosmTome, CosmosClient},
-    key::key::SigningKey,
     modules::{auth::model::Address, bank::model::SendResponse},
+    signing_key::key::SigningKey,
 };
 
 use super::{

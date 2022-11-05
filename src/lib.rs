@@ -4,6 +4,6 @@ pub mod clients;
 
 pub mod config;
 
-pub mod key;
+pub mod signing_key;
 
 pub mod chain;

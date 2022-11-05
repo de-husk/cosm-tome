@@ -32,7 +32,7 @@ impl Address {
 
 impl AsRef<str> for Address {
     fn as_ref(&self) -> &str {
-        &self.0.as_ref()
+        self.0.as_ref()
     }
 }
 
