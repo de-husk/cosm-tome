@@ -27,13 +27,13 @@ impl SigningKey {
         Ok(account.into())
     }
 
-    pub fn random_mnemonic(key_name: String) -> Result<SigningKey, ChainError> {
+    pub fn random_mnemonic(key_name: String) -> SigningKey {
         let mnemonic = bip32::Mnemonic::random(&mut OsRng, Default::default());
 
-        Ok(SigningKey {
+        SigningKey {
             name: key_name,
             key: Key::Mnemonic(mnemonic.phrase().to_string()),
-        })
+        }
     }
 }
 
