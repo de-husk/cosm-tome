@@ -61,10 +61,9 @@ impl CosmosgRPC {
 
 #[async_trait]
 impl CosmosClient for CosmosgRPC {
-    async fn query<T, I, O>(&self, msg: T, path: &str) -> Result<O, ChainError>
+    async fn query<I, O>(&self, msg: I, path: &str) -> Result<O, ChainError>
     where
-        T: Message + Default + tonic::IntoRequest<I>,
-        I: Message + 'static,
+        I: Message + Default + tonic::IntoRequest<I> + 'static,
         O: Message + Default + 'static,
     {
         let res = self.grpc_call::<I, O>(msg, path).await?;

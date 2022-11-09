@@ -166,7 +166,7 @@ impl<T: CosmosClient> CosmTome<T> {
 
         let res = self
             .client
-            .query::<_, QuerySmartContractStateRequest, QuerySmartContractStateResponse>(
+            .query::<_, QuerySmartContractStateResponse>(
                 req,
                 "/cosmwasm.wasm.v1.Query/SmartContractState",
             )

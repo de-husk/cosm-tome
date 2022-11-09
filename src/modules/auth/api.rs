@@ -22,10 +22,7 @@ impl<T: CosmosClient> CosmTome<T> {
 
         let res = self
             .client
-            .query::<_, QueryAccountRequest, QueryAccountResponse>(
-                req,
-                "/cosmos.auth.v1beta1.Query/Account",
-            )
+            .query::<_, QueryAccountResponse>(req, "/cosmos.auth.v1beta1.Query/Account")
             .await?;
 
         let account = res.account.ok_or(AccountError::Address {
@@ -50,10 +47,7 @@ impl<T: CosmosClient> CosmTome<T> {
 
         let res = self
             .client
-            .query::<_, QueryAccountsRequest, QueryAccountsResponse>(
-                req,
-                "/cosmos.auth.v1beta1.Query/Accounts",
-            )
+            .query::<_, QueryAccountsResponse>(req, "/cosmos.auth.v1beta1.Query/Accounts")
             .await?;
 
         let accounts: Vec<Account> = res
@@ -77,10 +71,7 @@ impl<T: CosmosClient> CosmTome<T> {
 
         let res = self
             .client
-            .query::<_, QueryParamsRequest, QueryParamsResponse>(
-                req,
-                "/cosmos.auth.v1beta1.Query/Params",
-            )
+            .query::<_, QueryParamsResponse>(req, "/cosmos.auth.v1beta1.Query/Params")
             .await?;
 
         Ok(ParamsResponse {

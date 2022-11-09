@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 // * Create easy way to read in the manual config from a yaml file
 // * Create a way to use the cosmos chain registry instead of manual
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ChainConfig {
     pub denom: String,
     pub prefix: String,
