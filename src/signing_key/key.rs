@@ -28,7 +28,7 @@ impl SigningKey {
     }
 
     pub fn random_mnemonic(key_name: String) -> SigningKey {
-        let mnemonic = bip32::Mnemonic::random(&mut OsRng, Default::default());
+        let mnemonic = bip32::Mnemonic::random(OsRng, Default::default());
 
         SigningKey {
             name: key_name,
