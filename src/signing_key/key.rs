@@ -1,4 +1,5 @@
 use cosmrs::bip32;
+use cosmrs::bip32::secp256k1::elliptic_curve::rand_core::OsRng;
 use cosmrs::crypto::secp256k1;
 use keyring::Entry;
 
@@ -24,6 +25,15 @@ impl SigningKey {
             .account_id(prefix)
             .map_err(ChainError::crypto)?;
         Ok(account.into())
+    }
+
+    pub fn random_mnemonic(key_name: String) -> SigningKey {
+        let mnemonic = bip32::Mnemonic::random(OsRng, Default::default());
+
+        SigningKey {
+            name: key_name,
+            key: Key::Mnemonic(mnemonic.phrase().to_string()),
+        }
     }
 }
 

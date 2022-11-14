@@ -1,11 +1,11 @@
-use cosmos_sdk_proto::cosmos::base::abci::v1beta1::GasInfo as CosmosProtoGasInfo;
+use cosmos_sdk_proto::cosmos::base::abci::v1beta1::GasInfo as ProtoGasInfo;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use super::{coin::Coin, error::ChainError};
 use crate::modules::auth::model::Address;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Fee {
     pub amount: Vec<Coin>,
 
@@ -125,7 +125,7 @@ impl From<Gas> for cosmrs::tx::Gas {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord, Default, Hash)]
 pub struct GasInfo {
     pub gas_wanted: Gas,
     pub gas_used: Gas,
@@ -146,8 +146,8 @@ impl GasInfo {
     }
 }
 
-impl From<CosmosProtoGasInfo> for GasInfo {
-    fn from(info: CosmosProtoGasInfo) -> GasInfo {
+impl From<ProtoGasInfo> for GasInfo {
+    fn from(info: ProtoGasInfo) -> GasInfo {
         GasInfo {
             gas_wanted: info.gas_wanted.into(),
             gas_used: info.gas_used.into(),
@@ -155,9 +155,9 @@ impl From<CosmosProtoGasInfo> for GasInfo {
     }
 }
 
-impl From<GasInfo> for CosmosProtoGasInfo {
-    fn from(info: GasInfo) -> CosmosProtoGasInfo {
-        CosmosProtoGasInfo {
+impl From<GasInfo> for ProtoGasInfo {
+    fn from(info: GasInfo) -> ProtoGasInfo {
+        ProtoGasInfo {
             gas_wanted: info.gas_wanted.into(),
             gas_used: info.gas_used.into(),
         }

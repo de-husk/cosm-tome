@@ -10,12 +10,15 @@ use crate::modules::tx::model::{BroadcastMode, RawTx};
 use super::cosmos_grpc::CosmosgRPC;
 use super::tendermint_rpc::TendermintRPC;
 
+#[cfg(test)]
+use mockall::automock;
+
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub trait CosmosClient {
-    async fn query<T, I, O>(&self, msg: T, path: &str) -> Result<O, ChainError>
+    async fn query<I, O>(&self, msg: I, path: &str) -> Result<O, ChainError>
     where
-        T: Message + Default + tonic::IntoRequest<I>,
-        I: Message + 'static,
+        I: Message + Default + tonic::IntoRequest<I> + 'static,
         O: Message + Default + 'static;
 
     async fn simulate_tx(&self, tx: &RawTx) -> Result<GasInfo, ChainError>;

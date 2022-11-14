@@ -69,10 +69,7 @@ impl<T: CosmosClient> CosmTome<T> {
 
         let res = self
             .client
-            .query::<_, QueryBalanceRequest, QueryBalanceResponse>(
-                req,
-                "/cosmos.bank.v1beta1.Query/Balance",
-            )
+            .query::<_, QueryBalanceResponse>(req, "/cosmos.bank.v1beta1.Query/Balance")
             .await?;
 
         // NOTE: we are unwrapping here, because unknown denoms still have a 0 balance returned here
@@ -94,10 +91,7 @@ impl<T: CosmosClient> CosmTome<T> {
 
         let res = self
             .client
-            .query::<_, QueryAllBalancesRequest, QueryAllBalancesResponse>(
-                req,
-                "/cosmos.bank.v1beta1.Query/AllBalances",
-            )
+            .query::<_, QueryAllBalancesResponse>(req, "/cosmos.bank.v1beta1.Query/AllBalances")
             .await?;
 
         let balances = res
@@ -125,7 +119,7 @@ impl<T: CosmosClient> CosmTome<T> {
 
         let res = self
             .client
-            .query::<_, QuerySpendableBalancesRequest, QuerySpendableBalancesResponse>(
+            .query::<_, QuerySpendableBalancesResponse>(
                 req,
                 "/cosmos.bank.v1beta1.Query/SpendableBalances",
             )
@@ -151,10 +145,7 @@ impl<T: CosmosClient> CosmTome<T> {
 
         let res = self
             .client
-            .query::<_, QuerySupplyOfRequest, QuerySupplyOfResponse>(
-                req,
-                "/cosmos.bank.v1beta1.Query/SupplyOf",
-            )
+            .query::<_, QuerySupplyOfResponse>(req, "/cosmos.bank.v1beta1.Query/SupplyOf")
             .await?;
 
         // NOTE: we are unwrapping here, because unknown denoms still have a 0 balance returned here
@@ -174,10 +165,7 @@ impl<T: CosmosClient> CosmTome<T> {
 
         let res = self
             .client
-            .query::<_, QueryTotalSupplyRequest, QueryTotalSupplyResponse>(
-                req,
-                "/cosmos.bank.v1beta1.Query/TotalSupply",
-            )
+            .query::<_, QueryTotalSupplyResponse>(req, "/cosmos.bank.v1beta1.Query/TotalSupply")
             .await?;
 
         let balances = res
@@ -203,10 +191,7 @@ impl<T: CosmosClient> CosmTome<T> {
 
         let res = self
             .client
-            .query::<_, QueryDenomMetadataRequest, QueryDenomMetadataResponse>(
-                req,
-                "/cosmos.bank.v1beta1.Query/DenomMetadata",
-            )
+            .query::<_, QueryDenomMetadataResponse>(req, "/cosmos.bank.v1beta1.Query/DenomMetadata")
             .await?;
 
         Ok(DenomMetadataResponse {
@@ -225,7 +210,7 @@ impl<T: CosmosClient> CosmTome<T> {
 
         let res = self
             .client
-            .query::<_, QueryDenomsMetadataRequest, QueryDenomsMetadataResponse>(
+            .query::<_, QueryDenomsMetadataResponse>(
                 req,
                 "/cosmos.bank.v1beta1.Query/DenomsMetadata",
             )
@@ -243,14 +228,199 @@ impl<T: CosmosClient> CosmTome<T> {
 
         let res = self
             .client
-            .query::<_, QueryParamsRequest, QueryParamsResponse>(
-                req,
-                "/cosmos.bank.v1beta1.Query/Params",
-            )
+            .query::<_, QueryParamsResponse>(req, "/cosmos.bank.v1beta1.Query/Params")
             .await?;
 
         Ok(ParamsResponse {
             params: res.params.map(Into::into),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        chain::response::{ChainResponse, ChainTxResponse, Code},
+        clients::client::MockCosmosClient,
+        modules::bank::model::SendResponse,
+    };
+    use cosmos_sdk_proto::{
+        cosmos::auth::v1beta1::{BaseAccount, QueryAccountRequest, QueryAccountResponse},
+        traits::MessageExt,
+    };
+
+    use crate::{
+        chain::{coin::Coin, fee::GasInfo, request::TxOptions},
+        clients::client::CosmTome,
+        config::cfg::ChainConfig,
+        modules::bank::{error::BankError, model::SendRequest},
+        signing_key::key::SigningKey,
+    };
+
+    #[tokio::test]
+    async fn test_bank_send_empty() {
+        let cfg = ChainConfig {
+            denom: "utest".to_string(),
+            prefix: "test".to_string(),
+            chain_id: "test-1".to_string(),
+            rpc_endpoint: "localhost".to_string(),
+            grpc_endpoint: "localhost:12690".to_string(),
+            gas_prices: 0.1,
+            gas_adjustment: 1.5,
+        };
+
+        let tx_options = TxOptions::default();
+        let key = SigningKey::random_mnemonic("test_key".to_string());
+
+        let cosm_tome = CosmTome {
+            cfg: cfg.clone(),
+            client: MockCosmosClient::new(),
+        };
+
+        // empty amount vec errors:
+        let req = SendRequest {
+            from: "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg"
+                .parse()
+                .unwrap(),
+            to: "juno1v9xynggs6vnrv2x5ufxdj398u2ghc5n9ya57ea"
+                .parse()
+                .unwrap(),
+            amounts: vec![],
+        };
+
+        let res = cosm_tome
+            .bank_send(req, &key, &tx_options)
+            .await
+            .err()
+            .unwrap();
+
+        assert!(matches!(res, BankError::EmptyAmount));
+
+        // coin with 0 value errors:
+        let req = SendRequest {
+            from: "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg"
+                .parse()
+                .unwrap(),
+            to: "juno1v9xynggs6vnrv2x5ufxdj398u2ghc5n9ya57ea"
+                .parse()
+                .unwrap(),
+            amounts: vec![
+                Coin {
+                    denom: cfg.denom.parse().unwrap(),
+                    amount: 10,
+                },
+                Coin {
+                    denom: cfg.denom.parse().unwrap(),
+                    amount: 0,
+                },
+            ],
+        };
+
+        let res = cosm_tome
+            .bank_send(req, &key, &tx_options)
+            .await
+            .err()
+            .unwrap();
+
+        assert!(matches!(res, BankError::EmptyAmount));
+    }
+
+    #[tokio::test]
+    async fn test_bank_send() {
+        let cfg = ChainConfig {
+            denom: "utest".to_string(),
+            prefix: "test".to_string(),
+            chain_id: "test-1".to_string(),
+            rpc_endpoint: "localhost".to_string(),
+            grpc_endpoint: "localhost:12690".to_string(),
+            gas_prices: 0.1,
+            gas_adjustment: 1.5,
+        };
+        let tx_options = TxOptions::default();
+        let key = SigningKey::random_mnemonic("test_key".to_string());
+
+        let mut mock_client = MockCosmosClient::new();
+
+        mock_client
+            .expect_query::<QueryAccountRequest, QueryAccountResponse>()
+            .times(1)
+            .returning(move |_, t: &str| {
+                Ok(QueryAccountResponse {
+                    account: Some(cosmos_sdk_proto::Any {
+                        type_url: t.to_owned(),
+                        value: BaseAccount {
+                            address: "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg".to_string(),
+                            pub_key: None,
+                            account_number: 1337,
+                            sequence: 1,
+                        }
+                        .to_bytes()
+                        .unwrap(),
+                    }),
+                })
+            });
+
+        mock_client.expect_simulate_tx().times(1).returning(|_| {
+            Ok(GasInfo {
+                gas_wanted: 200u16.into(),
+                gas_used: 100u16.into(),
+            })
+        });
+
+        mock_client
+            .expect_broadcast_tx_block()
+            .times(1)
+            .returning(|_| {
+                Ok(ChainTxResponse {
+                    res: ChainResponse {
+                        code: Code::Ok,
+                        data: None,
+                        log: "log log log".to_string(),
+                    },
+                    events: vec![],
+                    gas_wanted: 200,
+                    gas_used: 100,
+                    tx_hash: "TX_HASH_0".to_string(),
+                    height: 1337,
+                })
+            });
+
+        let cosm_tome = CosmTome {
+            cfg: cfg.clone(),
+            client: mock_client,
+        };
+
+        let req = SendRequest {
+            from: "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg"
+                .parse()
+                .unwrap(),
+            to: "juno1v9xynggs6vnrv2x5ufxdj398u2ghc5n9ya57ea"
+                .parse()
+                .unwrap(),
+            amounts: vec![Coin {
+                denom: cfg.denom.parse().unwrap(),
+                amount: 10,
+            }],
+        };
+
+        let res = cosm_tome.bank_send(req, &key, &tx_options).await.unwrap();
+
+        assert_eq!(
+            res,
+            SendResponse {
+                res: ChainTxResponse {
+                    res: ChainResponse {
+                        code: Code::Ok,
+                        data: None,
+                        log: "log log log".to_string()
+                    },
+                    events: vec![],
+                    gas_wanted: 200,
+                    gas_used: 100,
+                    tx_hash: "TX_HASH_0".to_string(),
+                    height: 1337
+                }
+            }
+        );
     }
 }
