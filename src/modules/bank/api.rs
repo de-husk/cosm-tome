@@ -447,7 +447,7 @@ mod tests {
         mock_client
             .expect_query::<QueryAccountRequest, QueryAccountResponse>()
             .times(1)
-            .returning(move |_, t: &str| {
+            .returning(move |_, _| {
                 Err(ChainError::CosmosSdk {
                     res: ChainResponse {
                         code: Code::Err(1),

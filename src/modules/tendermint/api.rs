@@ -18,6 +18,6 @@ impl<T: CosmosClient> CosmTome<T> {
             )
             .await?;
 
-        Ok(res.try_into()?)
+        res.try_into()
     }
 }
