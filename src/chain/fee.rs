@@ -113,18 +113,6 @@ impl From<u8> for Gas {
     }
 }
 
-impl From<cosmrs::tx::Gas> for Gas {
-    fn from(g: cosmrs::tx::Gas) -> Gas {
-        g.value().into()
-    }
-}
-
-impl From<Gas> for cosmrs::tx::Gas {
-    fn from(g: Gas) -> cosmrs::tx::Gas {
-        g.value().into()
-    }
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord, Default, Hash)]
 pub struct GasInfo {
     pub gas_wanted: Gas,

@@ -2,7 +2,7 @@ use cosmos_sdk_proto::{
     cosmos::base::abci::v1beta1::TxResponse as CosmosResponse,
     tendermint::abci::{Event as ProtoEvent, EventAttribute},
 };
-use cosmrs::tendermint::abci::{
+use cosmrs::rpc::abci::{
     tag::{Key, Tag as TendermintProtoTag, Value},
     Code as TendermintCode, Event as TendermintEvent,
 };
@@ -251,7 +251,7 @@ impl From<TendermintCode> for Code {
     fn from(value: TendermintCode) -> Code {
         match value {
             TendermintCode::Ok => Code::Ok,
-            TendermintCode::Err(err) => Code::Err(err),
+            TendermintCode::Err(err) => Code::Err(err.into()),
         }
     }
 }
@@ -339,9 +339,9 @@ impl TryFrom<Tag> for TendermintProtoTag {
 impl From<Tag> for EventAttribute {
     fn from(tag: Tag) -> Self {
         Self {
-            key: tag.key.into_bytes(),
-            value: tag.value.into_bytes(),
-            index: true, // TODO: ???
+            key: tag.key.into_bytes().into(),
+            value: tag.value.into_bytes().into(),
+            index: true,
         }
     }
 }
@@ -351,10 +351,10 @@ impl TryFrom<EventAttribute> for Tag {
 
     fn try_from(attr: EventAttribute) -> Result<Self, Self::Error> {
         Ok(Self {
-            key: String::from_utf8(attr.key).map_err(|e| ChainError::ProtoDecoding {
+            key: String::from_utf8(attr.key.into()).map_err(|e| ChainError::ProtoDecoding {
                 message: e.to_string(),
             })?,
-            value: String::from_utf8(attr.value).map_err(|e| ChainError::ProtoDecoding {
+            value: String::from_utf8(attr.value.into()).map_err(|e| ChainError::ProtoDecoding {
                 message: e.to_string(),
             })?,
         })
