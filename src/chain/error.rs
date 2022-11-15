@@ -12,6 +12,9 @@ pub enum ChainError {
     #[error("invalid chainId: {chain_id:?}")]
     ChainId { chain_id: String },
 
+    #[error("api endpoint is not configured {api_type:?}")]
+    MissingApiEndpoint { api_type: String },
+
     #[error("invalid mnemonic")]
     Mnemonic,
 
@@ -24,7 +27,7 @@ pub enum ChainError {
     #[error("invalid query path url: {url:?}")]
     QueryPath { url: String },
 
-    #[error("proto encoding error")]
+    #[error("proto encoding error: {message:?}")] // TODO: Do this for all string error messages
     ProtoEncoding { message: String },
 
     #[error("proto decoding error")]
@@ -33,7 +36,6 @@ pub enum ChainError {
     #[error("invalid cosmos msg sent to simulate endpoint")]
     Simulation,
 
-    // TODO: Reexport these error types
     #[error(transparent)]
     Keyring(#[from] keyring::Error),
 

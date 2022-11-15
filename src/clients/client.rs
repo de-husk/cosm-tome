@@ -10,14 +10,17 @@ use crate::modules::tx::model::{BroadcastMode, RawTx};
 use super::cosmos_grpc::CosmosgRPC;
 use super::tendermint_rpc::TendermintRPC;
 
-#[cfg(test)]
+#[cfg(feature = "mocks")]
 use mockall::automock;
 
-#[cfg_attr(test, automock)]
+#[cfg_attr(feature = "mocks", automock)]
 #[async_trait]
 pub trait CosmosClient {
+    // NOTE: We can make this `query()` dynamically dispatched and trait object usable
+    // if prost fixes this: https://github.com/tokio-rs/prost/issues/742
     async fn query<I, O>(&self, msg: I, path: &str) -> Result<O, ChainError>
     where
+        Self: Sized,
         I: Message + Default + tonic::IntoRequest<I> + 'static,
         O: Message + Default + 'static;
 
@@ -46,18 +49,43 @@ impl<T: CosmosClient> CosmTome<T> {
     pub fn new(cfg: ChainConfig, client: T) -> Self {
         Self { cfg, client }
     }
+}
 
+impl CosmTome<TendermintRPC> {
     pub fn with_tendermint_rpc(cfg: ChainConfig) -> Result<CosmTome<TendermintRPC>, ChainError> {
-        Ok(CosmTome {
-            client: TendermintRPC::new(&cfg.rpc_endpoint.clone())?,
-            cfg,
-        })
-    }
+        let rpc_endpoint = cfg
+            .rpc_endpoint
+            .clone()
+            .ok_or(ChainError::MissingApiEndpoint {
+                api_type: "tendermint_rpc".to_string(),
+            })?;
 
-    pub fn with_cosmos_grpc(cfg: ChainConfig) -> Result<CosmTome<CosmosgRPC>, ChainError> {
         Ok(CosmTome {
-            client: CosmosgRPC::new(cfg.grpc_endpoint.clone()),
+            client: TendermintRPC::new(&rpc_endpoint)?,
             cfg,
         })
     }
+}
+
+impl CosmTome<CosmosgRPC> {
+    pub fn with_cosmos_grpc(cfg: ChainConfig) -> Result<CosmTome<CosmosgRPC>, ChainError> {
+        let grpc_endpoint = cfg
+            .grpc_endpoint
+            .clone()
+            .ok_or(ChainError::MissingApiEndpoint {
+                api_type: "cosmos_grpc".to_string(),
+            })?;
+
+        Ok(CosmTome {
+            client: CosmosgRPC::new(grpc_endpoint),
+            cfg,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CosmosClient;
+
+    const _MESSAGE_IS_OBJECT_SAFE: Option<&dyn CosmosClient> = None;
 }

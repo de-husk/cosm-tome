@@ -25,7 +25,7 @@ As more APIs are added to Cosmos SDK, we will simply add a new `CosmosClient` im
 | Auth | ✅ |
 | Authz | 🚫 |
 | Bank | ✅ |
-| Tendermint | 🚫 |
+| Tendermint | 🔨 |
 | Crisis | 🚫 |
 | Distribution | 🚫 |
 | Evidence | 🚫 |
@@ -45,3 +45,9 @@ As more APIs are added to Cosmos SDK, we will simply add a new `CosmosClient` im
 ## Usage
 
 TODO
+
+
+## Development 
+
+`cargo t` to run the unit tests.
+

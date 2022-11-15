@@ -55,7 +55,6 @@ impl<T: CosmosClient> CosmTome<T> {
     ) -> Result<InstantiateResponse, CosmwasmError>
     where
         S: Serialize,
-        T: CosmosClient,
     {
         let mut res = self
             .wasm_instantiate_batch(vec![req], key, tx_options)
@@ -175,7 +174,7 @@ impl<T: CosmosClient> CosmTome<T> {
         Ok(QueryResponse { res: res.into() })
     }
 
-    pub async fn migrate<S>(
+    pub async fn wasm_migrate<S>(
         &self,
         req: MigrateRequest<S>,
         key: &SigningKey,
@@ -184,10 +183,10 @@ impl<T: CosmosClient> CosmTome<T> {
     where
         S: Serialize,
     {
-        self.migrate_batch(vec![req], key, tx_options).await
+        self.wasm_migrate_batch(vec![req], key, tx_options).await
     }
 
-    pub async fn migrate_batch<S, I>(
+    pub async fn wasm_migrate_batch<S, I>(
         &self,
         reqs: I,
         key: &SigningKey,

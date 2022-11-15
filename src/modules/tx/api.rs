@@ -28,7 +28,6 @@ impl<T: CosmosClient> CosmTome<T> {
         tx_options: &TxOptions,
     ) -> Result<RawTx, TxError>
     where
-        T: CosmosClient,
         I: IntoIterator<Item = Any>,
     {
         let sender_addr = key.to_addr(&self.cfg.prefix)?;
