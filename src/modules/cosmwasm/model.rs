@@ -9,6 +9,7 @@ use cosmos_sdk_proto::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::chain::error::DeserializeError;
 use crate::{
     chain::{
         coin::Coin,
@@ -93,6 +94,12 @@ impl TryFrom<StoreCodeProto> for MsgStoreCode {
 pub struct StoreCodeResponse {
     pub code_id: u64,
     pub res: ChainTxResponse,
+}
+
+impl StoreCodeResponse {
+    pub fn data<'a, T: Deserialize<'a>>(&'a self) -> Result<T, DeserializeError> {
+        self.res.res.data()
+    }
 }
 
 impl AsRef<ChainTxResponse> for StoreCodeResponse {
@@ -200,6 +207,12 @@ pub struct InstantiateResponse {
     pub res: ChainTxResponse,
 }
 
+impl InstantiateResponse {
+    pub fn data<'a, T: Deserialize<'a>>(&'a self) -> Result<T, DeserializeError> {
+        self.res.res.data()
+    }
+}
+
 impl AsRef<ChainTxResponse> for InstantiateResponse {
     fn as_ref(&self) -> &ChainTxResponse {
         &self.res
@@ -210,6 +223,12 @@ impl AsRef<ChainTxResponse> for InstantiateResponse {
 pub struct InstantiateBatchResponse {
     pub addresses: Vec<Address>,
     pub res: ChainTxResponse,
+}
+
+impl InstantiateBatchResponse {
+    pub fn data<'a, T: Deserialize<'a>>(&'a self) -> Result<T, DeserializeError> {
+        self.res.res.data()
+    }
 }
 
 impl AsRef<ChainTxResponse> for InstantiateBatchResponse {
@@ -300,6 +319,12 @@ pub struct ExecResponse {
     pub res: ChainTxResponse,
 }
 
+impl ExecResponse {
+    pub fn data<'a, T: Deserialize<'a>>(&'a self) -> Result<T, DeserializeError> {
+        self.res.res.data()
+    }
+}
+
 impl AsRef<ChainTxResponse> for ExecResponse {
     fn as_ref(&self) -> &ChainTxResponse {
         &self.res
@@ -309,6 +334,12 @@ impl AsRef<ChainTxResponse> for ExecResponse {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct QueryResponse {
     pub res: ChainResponse,
+}
+
+impl QueryResponse {
+    pub fn data<'a, T: Deserialize<'a>>(&'a self) -> Result<T, DeserializeError> {
+        self.res.data()
+    }
 }
 
 impl AsRef<ChainResponse> for QueryResponse {
@@ -393,6 +424,12 @@ impl TryFrom<MigrateRequestProto> for MsgMigrateContract {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct MigrateResponse {
     pub res: ChainTxResponse,
+}
+
+impl MigrateResponse {
+    pub fn data<'a, T: Deserialize<'a>>(&'a self) -> Result<T, DeserializeError> {
+        self.res.res.data()
+    }
 }
 
 impl AsRef<ChainTxResponse> for MigrateResponse {

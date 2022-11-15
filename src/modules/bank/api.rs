@@ -240,9 +240,12 @@ impl<T: CosmosClient> CosmTome<T> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        chain::response::{ChainResponse, ChainTxResponse, Code},
+        chain::{
+            error::ChainError,
+            response::{ChainResponse, ChainTxResponse, Code},
+        },
         clients::client::MockCosmosClient,
-        modules::bank::model::SendResponse,
+        modules::{bank::model::SendResponse, tx::error::TxError},
     };
     use cosmos_sdk_proto::{
         cosmos::auth::v1beta1::{BaseAccount, QueryAccountRequest, QueryAccountResponse},
@@ -263,8 +266,8 @@ mod tests {
             denom: "utest".to_string(),
             prefix: "test".to_string(),
             chain_id: "test-1".to_string(),
-            rpc_endpoint: "localhost".to_string(),
-            grpc_endpoint: "localhost:12690".to_string(),
+            rpc_endpoint: Some("localhost".to_string()),
+            grpc_endpoint: None,
             gas_prices: 0.1,
             gas_adjustment: 1.5,
         };
@@ -331,8 +334,8 @@ mod tests {
             denom: "utest".to_string(),
             prefix: "test".to_string(),
             chain_id: "test-1".to_string(),
-            rpc_endpoint: "localhost".to_string(),
-            grpc_endpoint: "localhost:12690".to_string(),
+            rpc_endpoint: None,
+            grpc_endpoint: None,
             gas_prices: 0.1,
             gas_adjustment: 1.5,
         };
@@ -423,4 +426,63 @@ mod tests {
             }
         );
     }
+
+    #[tokio::test]
+    async fn test_bank_send_account_err() {
+        let cfg = ChainConfig {
+            denom: "utest".to_string(),
+            prefix: "test".to_string(),
+            chain_id: "test-1".to_string(),
+            rpc_endpoint: None,
+            grpc_endpoint: None,
+            gas_prices: 0.1,
+            gas_adjustment: 1.5,
+        };
+
+        let tx_options = TxOptions::default();
+        let key = SigningKey::random_mnemonic("test_key".to_string());
+
+        let mut mock_client = MockCosmosClient::new();
+
+        mock_client
+            .expect_query::<QueryAccountRequest, QueryAccountResponse>()
+            .times(1)
+            .returning(move |_, t: &str| {
+                Err(ChainError::CosmosSdk {
+                    res: ChainResponse {
+                        code: Code::Err(1),
+                        data: None,
+                        log: "error".to_string(),
+                    },
+                })
+            });
+
+        let cosm_tome = CosmTome {
+            cfg: cfg.clone(),
+            client: mock_client,
+        };
+
+        let req = SendRequest {
+            from: "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg"
+                .parse()
+                .unwrap(),
+            to: "juno1v9xynggs6vnrv2x5ufxdj398u2ghc5n9ya57ea"
+                .parse()
+                .unwrap(),
+            amounts: vec![Coin {
+                denom: cfg.denom.parse().unwrap(),
+                amount: 10,
+            }],
+        };
+
+        let res = cosm_tome
+            .bank_send(req, &key, &tx_options)
+            .await
+            .err()
+            .unwrap();
+
+        assert!(matches!(res, BankError::TxError(TxError::AccountError(..))));
+    }
+
+    // TODO: Add more happy path tests for other functions
 }

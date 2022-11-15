@@ -105,7 +105,7 @@ impl Default for TxOptions {
         Self {
             fee: None,
             timeout_height: Some(0),
-            memo: "Made with cosm-client".to_string(),
+            memo: "Made with cosm-tome client".to_string(),
         }
     }
 }
