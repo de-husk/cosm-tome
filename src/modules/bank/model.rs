@@ -2,9 +2,9 @@ use std::fmt;
 
 use cosmrs::proto::traits::MessageExt;
 use cosmrs::proto::{
-    cosmos::{
-        self,
-        bank::v1beta1::{Metadata, MsgSend},
+    cosmos::bank::v1beta1::{
+        DenomUnit as ProtoDenomUnit, Metadata, MsgSend, Params as ProtoParams,
+        SendEnabled as ProtoSendEnabled,
     },
     Any,
 };
@@ -114,10 +114,10 @@ pub struct DenomUnit {
     pub aliases: Vec<String>,
 }
 
-impl TryFrom<cosmos::bank::v1beta1::DenomUnit> for DenomUnit {
+impl TryFrom<ProtoDenomUnit> for DenomUnit {
     type Error = ChainError;
 
-    fn try_from(du: cosmos::bank::v1beta1::DenomUnit) -> Result<Self, Self::Error> {
+    fn try_from(du: ProtoDenomUnit) -> Result<Self, Self::Error> {
         Ok(Self {
             denom: du.denom.parse()?,
             exponent: du.exponent,
@@ -126,7 +126,7 @@ impl TryFrom<cosmos::bank::v1beta1::DenomUnit> for DenomUnit {
     }
 }
 
-impl From<DenomUnit> for cosmos::bank::v1beta1::DenomUnit {
+impl From<DenomUnit> for ProtoDenomUnit {
     fn from(du: DenomUnit) -> Self {
         Self {
             denom: du.denom.into(),
@@ -147,10 +147,10 @@ pub struct Params {
     pub default_send_enabled: bool,
 }
 
-impl TryFrom<cosmos::bank::v1beta1::Params> for Params {
+impl TryFrom<ProtoParams> for Params {
     type Error = ChainError;
 
-    fn try_from(p: cosmos::bank::v1beta1::Params) -> Result<Self, Self::Error> {
+    fn try_from(p: ProtoParams) -> Result<Self, Self::Error> {
         Ok(Self {
             send_enabled: p
                 .send_enabled
@@ -162,7 +162,7 @@ impl TryFrom<cosmos::bank::v1beta1::Params> for Params {
     }
 }
 
-impl From<Params> for cosmos::bank::v1beta1::Params {
+impl From<Params> for ProtoParams {
     fn from(p: Params) -> Self {
         Self {
             send_enabled: p.send_enabled.into_iter().map(Into::into).collect(),
@@ -178,10 +178,10 @@ pub struct SendEnabled {
     pub enabled: bool,
 }
 
-impl TryFrom<cosmos::bank::v1beta1::SendEnabled> for SendEnabled {
+impl TryFrom<ProtoSendEnabled> for SendEnabled {
     type Error = ChainError;
 
-    fn try_from(se: cosmos::bank::v1beta1::SendEnabled) -> Result<Self, Self::Error> {
+    fn try_from(se: ProtoSendEnabled) -> Result<Self, Self::Error> {
         Ok(Self {
             denom: se.denom.parse()?,
             enabled: se.enabled,
@@ -189,7 +189,7 @@ impl TryFrom<cosmos::bank::v1beta1::SendEnabled> for SendEnabled {
     }
 }
 
-impl From<SendEnabled> for cosmos::bank::v1beta1::SendEnabled {
+impl From<SendEnabled> for ProtoSendEnabled {
     fn from(se: SendEnabled) -> Self {
         Self {
             denom: se.denom.into(),

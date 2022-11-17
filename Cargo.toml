@@ -2,11 +2,23 @@
 name = "cosm-tome"
 version = "0.1.0"
 edition = "2021"
+authors = ["Harry Hull <harry.hull1@gmail.com>"]
+
+readme = "README.md"
+description = "Easy to use Cosmos SDK rust client library "
+repository = "https://github.com/de-husk/cosm-tome.git"
+
+keywords = ["cosmos"]
+categories = ["cryptography::cryptocurrencies"]
+license = "Apache-2.0"
 
 [features]
 mocks = ["mockall"]
 
 [dependencies]
+cosmrs = { version = "0.10.0", features = ["rpc", "cosmwasm", "grpc"] }
+tonic = { version = "0.8.2", default-features=false, features = ["transport", "prost"] }
+
 async-trait = "0.1.57"
 thiserror = "1.0.31"
 regex = "1.6.0"
@@ -14,9 +26,6 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = "1.0"
 keyring = "1.2.0"
 mockall = { version = "0.11.2", optional = true }
-
-cosmrs = { version = "0.10.0", features = ["rpc", "cosmwasm", "grpc"] }
-tonic = { version = "0.8.2", default-features=false, features = ["transport", "prost"] }
 
 [dev-dependencies]
 tokio = { version = "1.20.1", features = ["full"]}
