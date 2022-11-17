@@ -1,5 +1,5 @@
-use cosmos_sdk_proto::traits::MessageExt;
-use cosmos_sdk_proto::{
+use cosmrs::proto::traits::MessageExt;
+use cosmrs::proto::{
     cosmos::tx::v1beta1::{BroadcastMode as ProtoBroadcastMode, TxRaw},
     traits::Message,
 };

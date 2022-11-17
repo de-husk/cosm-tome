@@ -1,4 +1,4 @@
-use cosmos_sdk_proto::{
+use cosmrs::proto::{
     cosmos::base::tendermint::v1beta1::GetLatestBlockResponse,
     tendermint::types::{Block, BlockId},
 };

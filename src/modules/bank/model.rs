@@ -1,7 +1,7 @@
 use std::fmt;
 
-use cosmos_sdk_proto::traits::MessageExt;
-use cosmos_sdk_proto::{
+use cosmrs::proto::traits::MessageExt;
+use cosmrs::proto::{
     cosmos::{
         self,
         bank::v1beta1::{Metadata, MsgSend},

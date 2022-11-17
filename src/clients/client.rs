@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use cosmos_sdk_proto::traits::Message;
+use cosmrs::proto::traits::Message;
 
 use crate::chain::error::ChainError;
 use crate::chain::fee::GasInfo;
@@ -16,7 +16,7 @@ use mockall::automock;
 #[cfg_attr(feature = "mocks", automock)]
 #[async_trait]
 pub trait CosmosClient {
-    // NOTE: We can make this `query()` dynamically dispatched and trait object usable
+    // NOTE: We can make `query()` dynamically dispatched and trait object usable
     // if prost fixes this: https://github.com/tokio-rs/prost/issues/742
     async fn query<I, O>(&self, msg: I, path: &str) -> Result<O, ChainError>
     where

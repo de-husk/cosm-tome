@@ -39,10 +39,10 @@ impl TryFrom<cosmrs::Coin> for Coin {
     }
 }
 
-impl TryFrom<cosmos_sdk_proto::cosmos::base::v1beta1::Coin> for Coin {
+impl TryFrom<cosmrs::proto::cosmos::base::v1beta1::Coin> for Coin {
     type Error = ChainError;
 
-    fn try_from(coin: cosmos_sdk_proto::cosmos::base::v1beta1::Coin) -> Result<Self, Self::Error> {
+    fn try_from(coin: cosmrs::proto::cosmos::base::v1beta1::Coin) -> Result<Self, Self::Error> {
         Ok(Self {
             denom: coin.denom.parse()?,
             amount: coin
@@ -55,7 +55,7 @@ impl TryFrom<cosmos_sdk_proto::cosmos::base::v1beta1::Coin> for Coin {
     }
 }
 
-impl From<Coin> for cosmos_sdk_proto::cosmos::base::v1beta1::Coin {
+impl From<Coin> for cosmrs::proto::cosmos::base::v1beta1::Coin {
     fn from(coin: Coin) -> Self {
         Self {
             denom: coin.denom.into(),

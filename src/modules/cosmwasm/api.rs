@@ -1,9 +1,9 @@
-use cosmos_sdk_proto::Any;
+use cosmrs::proto::Any;
 use serde::Serialize;
 
 use crate::chain::request::TxOptions;
 use crate::clients::client::CosmTome;
-use cosmos_sdk_proto::cosmwasm::wasm::v1::{
+use cosmrs::proto::cosmwasm::wasm::v1::{
     QuerySmartContractStateRequest, QuerySmartContractStateResponse,
 };
 

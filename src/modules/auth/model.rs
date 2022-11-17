@@ -1,6 +1,6 @@
 use std::{fmt, str::FromStr};
 
-use cosmos_sdk_proto::cosmos::auth::v1beta1::{BaseAccount, Params as CosmosParams};
+use cosmrs::proto::cosmos::auth::v1beta1::{BaseAccount, Params as CosmosParams};
 use cosmrs::{crypto::PublicKey, AccountId};
 use serde::{Deserialize, Serialize};
 

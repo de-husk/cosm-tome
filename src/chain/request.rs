@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use cosmos_sdk_proto::cosmos::base::query::v1beta1::{PageRequest, PageResponse};
+use cosmrs::proto::cosmos::base::query::v1beta1::{PageRequest, PageResponse};
 
 use super::fee::Fee;
 

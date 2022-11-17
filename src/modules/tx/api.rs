@@ -1,4 +1,4 @@
-use cosmos_sdk_proto::cosmos::tx::v1beta1::TxRaw;
+use cosmrs::proto::cosmos::tx::v1beta1::TxRaw;
 use cosmrs::tx::{SignDoc, SignerInfo};
 use cosmrs::{crypto::secp256k1, tx::Body};
 

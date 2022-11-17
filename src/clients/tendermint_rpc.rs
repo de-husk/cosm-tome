@@ -1,8 +1,7 @@
 use async_trait::async_trait;
-use cosmos_sdk_proto::cosmos::tx::v1beta1::{SimulateRequest, SimulateResponse};
-use cosmos_sdk_proto::traits::Message;
-use cosmrs::rpc::HttpClient;
-use tendermint_rpc::Client;
+use cosmrs::proto::cosmos::tx::v1beta1::{SimulateRequest, SimulateResponse};
+use cosmrs::proto::traits::Message;
+use cosmrs::rpc::{Client, HttpClient};
 
 use crate::chain::error::ChainError;
 use crate::chain::fee::GasInfo;
@@ -40,7 +39,6 @@ impl CosmosClient for TendermintRPC {
     {
         let bytes = TendermintRPC::encode_msg(msg)?;
 
-        // TODO: dont hardcode `height` and `prove`?
         let res = self
             .client
             .abci_query(Some(path.parse()?), bytes, None, false)

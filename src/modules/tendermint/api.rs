@@ -1,4 +1,4 @@
-use cosmos_sdk_proto::cosmos::base::tendermint::v1beta1::{
+use cosmrs::proto::cosmos::base::tendermint::v1beta1::{
     GetLatestBlockRequest, GetLatestBlockResponse,
 };
 

@@ -1,4 +1,4 @@
-use cosmos_sdk_proto::cosmos::base::abci::v1beta1::GasInfo as ProtoGasInfo;
+use cosmrs::proto::cosmos::base::abci::v1beta1::GasInfo as ProtoGasInfo;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

@@ -1,6 +1,6 @@
-use cosmos_sdk_proto::cosmwasm::wasm::v1::MsgStoreCode;
-use cosmos_sdk_proto::traits::MessageExt;
-use cosmos_sdk_proto::{
+use cosmrs::proto::cosmwasm::wasm::v1::MsgStoreCode;
+use cosmrs::proto::traits::MessageExt;
+use cosmrs::proto::{
     cosmwasm::wasm::v1::{
         AccessConfig as ProtoAccessConfig, AccessType as ProtoAccessType, MsgExecuteContract,
         MsgInstantiateContract, MsgMigrateContract, QuerySmartContractStateResponse,
