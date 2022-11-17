@@ -2,11 +2,11 @@ use crate::chain::error::ChainError;
 use crate::chain::request::PaginationRequest;
 use crate::clients::client::{CosmTome, CosmosClient};
 use crate::modules::auth::model::Account;
-use cosmos_sdk_proto::cosmos::auth::v1beta1::{
+use cosmrs::proto::cosmos::auth::v1beta1::{
     BaseAccount, QueryAccountRequest, QueryAccountResponse, QueryAccountsRequest,
     QueryAccountsResponse, QueryParamsRequest, QueryParamsResponse,
 };
-use cosmos_sdk_proto::traits::Message;
+use cosmrs::proto::traits::Message;
 
 use super::error::AccountError;
 use super::model::{AccountResponse, AccountsResponse, Address, ParamsResponse};

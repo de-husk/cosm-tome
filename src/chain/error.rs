@@ -1,6 +1,11 @@
-use cosmos_sdk_proto::prost::{DecodeError, EncodeError};
+use cosmrs::proto::prost::{DecodeError, EncodeError};
 use cosmrs::ErrorReport;
 use thiserror::Error;
+
+pub use cosmrs::rpc::Error as TendermintRPCError;
+pub use cosmrs::tendermint::Error as TendermintError;
+pub use keyring::Error as KeyringError;
+pub use tonic::transport::Error as CosmosGRPCError;
 
 use super::response::ChainResponse;
 
@@ -21,37 +26,37 @@ pub enum ChainError {
     #[error("invalid derivation path")]
     DerviationPath,
 
-    #[error("cryptographic error")]
+    #[error("cryptographic error: {message:?}")]
     Crypto { message: String },
 
     #[error("invalid query path url: {url:?}")]
     QueryPath { url: String },
 
-    #[error("proto encoding error: {message:?}")] // TODO: Do this for all string error messages
+    #[error("proto encoding error: {message:?}")]
     ProtoEncoding { message: String },
 
-    #[error("proto decoding error")]
+    #[error("proto decoding error: {message:?}")]
     ProtoDecoding { message: String },
 
     #[error("invalid cosmos msg sent to simulate endpoint")]
     Simulation,
 
     #[error(transparent)]
-    Keyring(#[from] keyring::Error),
+    Keyring(#[from] KeyringError),
 
     #[error("CosmosSDK error: {res:?}")]
     CosmosSdk { res: ChainResponse },
 
-    // TODO: Stop exposing both of these since they are literally just the same rexported error
-    #[error(transparent)]
-    RPC(#[from] tendermint_rpc::Error),
-    #[error(transparent)]
-    RPCError(#[from] cosmrs::tendermint::Error),
+    #[error("Tendermint error")]
+    Tendermint(#[from] TendermintError),
 
+    /// Tendermint RPC client errors
     #[error(transparent)]
-    GRPC(#[from] tonic::Status),
+    RPC(#[from] TendermintRPCError),
+
+    /// Cosmos gRPC client errors
     #[error(transparent)]
-    GRPCConnection(#[from] tonic::transport::Error),
+    GRPC(#[from] CosmosGRPCError),
 }
 
 impl ChainError {
@@ -77,6 +82,10 @@ impl ChainError {
         ChainError::ProtoDecoding {
             message: e.to_string(),
         }
+    }
+
+    pub(crate) fn tonic_status(e: tonic::Status) -> ChainError {
+        ChainError::CosmosSdk { res: e.into() }
     }
 }
 

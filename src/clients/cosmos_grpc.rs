@@ -1,11 +1,11 @@
 use async_trait::async_trait;
-use cosmos_sdk_proto::cosmos::tx::v1beta1::service_client::ServiceClient;
-use cosmos_sdk_proto::cosmos::tx::v1beta1::{
+use cosmrs::proto::cosmos::tx::v1beta1::service_client::ServiceClient;
+use cosmrs::proto::cosmos::tx::v1beta1::{
     BroadcastMode as ProtoBroadcastMode, BroadcastTxRequest, SimulateRequest,
 };
 use tonic::codec::ProstCodec;
 
-use cosmos_sdk_proto::traits::Message;
+use cosmrs::proto::traits::Message;
 
 use crate::chain::fee::GasInfo;
 use crate::chain::response::{AsyncChainTxResponse, ChainResponse, Code};
@@ -53,9 +53,10 @@ impl CosmosgRPC {
                 })?,
                 codec,
             )
-            .await;
+            .await
+            .map_err(ChainError::tonic_status)?;
 
-        Ok(res?.into_inner())
+        Ok(res.into_inner())
     }
 }
 
@@ -109,7 +110,11 @@ impl CosmosClient for CosmosgRPC {
             mode: mode as i32,
         };
 
-        let res = client.broadcast_tx(req).await?.into_inner();
+        let res = client
+            .broadcast_tx(req)
+            .await
+            .map_err(ChainError::tonic_status)?
+            .into_inner();
 
         let res: AsyncChainTxResponse = res.tx_response.unwrap().into();
 
@@ -128,7 +133,11 @@ impl CosmosClient for CosmosgRPC {
             mode: ProtoBroadcastMode::Block.into(),
         };
 
-        let res = client.broadcast_tx(req).await?.into_inner();
+        let res = client
+            .broadcast_tx(req)
+            .await
+            .map_err(ChainError::tonic_status)?
+            .into_inner();
 
         let res: ChainTxResponse = res.tx_response.unwrap().try_into()?;
 

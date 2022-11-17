@@ -1,4 +1,4 @@
-use cosmos_sdk_proto::{
+use cosmrs::proto::{
     cosmos::base::abci::v1beta1::TxResponse as CosmosResponse,
     tendermint::abci::{Event as ProtoEvent, EventAttribute},
 };
@@ -6,14 +6,14 @@ use cosmrs::rpc::abci::{
     tag::{Key, Tag as TendermintProtoTag, Value},
     Code as TendermintCode, Event as TendermintEvent,
 };
-use serde::{Deserialize, Serialize};
-use std::str::FromStr;
-use tendermint_rpc::endpoint::{
+use cosmrs::rpc::endpoint::{
     abci_query::AbciQuery,
     broadcast::tx_async::Response as AsyncTendermintResponse,
     broadcast::tx_commit::{Response as BlockingTendermintResponse, TxResult},
     broadcast::tx_sync::Response as SyncTendermintResponse,
 };
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 use super::error::{ChainError, DeserializeError};
 
@@ -52,6 +52,16 @@ impl From<TxResult> for ChainResponse {
             code: res.code.into(),
             data: res.data.map(|d| d.into()),
             log: res.log.to_string(),
+        }
+    }
+}
+
+impl From<tonic::Status> for ChainResponse {
+    fn from(res: tonic::Status) -> ChainResponse {
+        ChainResponse {
+            code: res.code().into(),
+            data: Some(res.details().into()),
+            log: res.message().into(),
         }
     }
 }
@@ -162,7 +172,7 @@ impl From<BlockingTendermintResponse> for ChainTxResponse {
 impl TryFrom<CosmosResponse> for ChainTxResponse {
     type Error = ChainError;
 
-    fn try_from(res: CosmosResponse) -> Result<ChainTxResponse, Self::Error> {
+    fn try_from(res: CosmosResponse) -> Result<Self, Self::Error> {
         Ok(ChainTxResponse {
             res: ChainResponse {
                 code: res.code.into(),
@@ -252,6 +262,32 @@ impl From<TendermintCode> for Code {
         match value {
             TendermintCode::Ok => Code::Ok,
             TendermintCode::Err(err) => Code::Err(err.into()),
+        }
+    }
+}
+
+impl From<tonic::Code> for Code {
+    fn from(value: tonic::Code) -> Code {
+        // NOTE: `value` is an isize, so we are just manually
+        // matching them to avoid any casting errors in the future
+        match value {
+            tonic::Code::Ok => Code::Ok,
+            tonic::Code::Cancelled => Code::Err(1),
+            tonic::Code::Unknown => Code::Err(2),
+            tonic::Code::InvalidArgument => Code::Err(3),
+            tonic::Code::DeadlineExceeded => Code::Err(4),
+            tonic::Code::NotFound => Code::Err(5),
+            tonic::Code::AlreadyExists => Code::Err(6),
+            tonic::Code::PermissionDenied => Code::Err(7),
+            tonic::Code::ResourceExhausted => Code::Err(8),
+            tonic::Code::FailedPrecondition => Code::Err(9),
+            tonic::Code::Aborted => Code::Err(10),
+            tonic::Code::OutOfRange => Code::Err(11),
+            tonic::Code::Unimplemented => Code::Err(12),
+            tonic::Code::Internal => Code::Err(13),
+            tonic::Code::Unavailable => Code::Err(14),
+            tonic::Code::DataLoss => Code::Err(15),
+            tonic::Code::Unauthenticated => Code::Err(16),
         }
     }
 }

@@ -5,26 +5,24 @@ use crate::{
     modules::{auth::error::AccountError, tx::error::TxError},
 };
 
+pub use serde_json::Error as SerdeJsonError;
+
 #[derive(Error, Debug)]
 pub enum CosmwasmError {
     #[error("cannot serialize inputted msg as json")]
-    JsonSerialize { source: serde_json::Error },
-
-    // TODO: Store admin address and show it in the error string
-    #[error("invalid admin address")]
-    AdminAddress,
+    JsonSerialize { source: SerdeJsonError },
 
     #[error("unsupported instantiate permission AccessType: {i:?}")]
     AccessType { i: i32 },
+
+    #[error("missing event from chain response")]
+    MissingEvent,
 
     #[error(transparent)]
     TxError(#[from] TxError),
 
     #[error(transparent)]
     AccountError(#[from] AccountError),
-
-    #[error("missing event from chain response")]
-    MissingEvent,
 
     #[error(transparent)]
     ChainError(#[from] ChainError),

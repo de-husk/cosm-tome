@@ -1,4 +1,4 @@
-use cosmos_sdk_proto::cosmos::bank::v1beta1::{
+use cosmrs::proto::cosmos::bank::v1beta1::{
     QueryAllBalancesRequest, QueryAllBalancesResponse, QueryBalanceRequest, QueryBalanceResponse,
     QueryDenomMetadataRequest, QueryDenomMetadataResponse, QueryDenomsMetadataRequest,
     QueryDenomsMetadataResponse, QueryParamsRequest, QueryParamsResponse,
@@ -195,7 +195,7 @@ impl<T: CosmosClient> CosmTome<T> {
             .await?;
 
         Ok(DenomMetadataResponse {
-            meta: res.metadata.map(Into::into),
+            meta: res.metadata.map(TryInto::try_into).transpose()?,
         })
     }
 
@@ -217,7 +217,11 @@ impl<T: CosmosClient> CosmTome<T> {
             .await?;
 
         Ok(DenomsMetadataResponse {
-            metas: res.metadatas.into_iter().map(Into::into).collect(),
+            metas: res
+                .metadatas
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<_>, _>>()?,
             next: res.pagination.map(Into::into),
         })
     }
@@ -232,7 +236,7 @@ impl<T: CosmosClient> CosmTome<T> {
             .await?;
 
         Ok(ParamsResponse {
-            params: res.params.map(Into::into),
+            params: res.params.map(TryInto::try_into).transpose()?,
         })
     }
 }
@@ -247,7 +251,7 @@ mod tests {
         clients::client::MockCosmosClient,
         modules::{bank::model::SendResponse, tx::error::TxError},
     };
-    use cosmos_sdk_proto::{
+    use cosmrs::proto::{
         cosmos::auth::v1beta1::{BaseAccount, QueryAccountRequest, QueryAccountResponse},
         traits::MessageExt,
     };
@@ -349,7 +353,7 @@ mod tests {
             .times(1)
             .returning(move |_, t: &str| {
                 Ok(QueryAccountResponse {
-                    account: Some(cosmos_sdk_proto::Any {
+                    account: Some(cosmrs::proto::Any {
                         type_url: t.to_owned(),
                         value: BaseAccount {
                             address: "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg".to_string(),
