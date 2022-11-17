@@ -8,7 +8,6 @@ use super::error::TendermintError;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct BlockResponse {
-    // TODO: Dont expose these protos externally, make my own types
     pub id: BlockId,
     pub block: Block,
 }

@@ -10,6 +10,7 @@ use cosmrs::proto::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::chain::coin::Denom;
 use crate::{
     chain::{
         coin::Coin, error::ChainError, request::PaginationResponse, response::ChainTxResponse,
@@ -67,16 +68,22 @@ pub struct DenomMetadata {
     pub symbol: String,
 }
 
-impl From<Metadata> for DenomMetadata {
-    fn from(meta: Metadata) -> Self {
-        Self {
+impl TryFrom<Metadata> for DenomMetadata {
+    type Error = ChainError;
+
+    fn try_from(meta: Metadata) -> Result<Self, Self::Error> {
+        Ok(Self {
             description: meta.description,
-            denom_units: meta.denom_units.into_iter().map(Into::into).collect(),
+            denom_units: meta
+                .denom_units
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<_>, _>>()?,
             base: meta.base,
             display: meta.display,
             name: meta.name,
             symbol: meta.symbol,
-        }
+        })
     }
 }
 
@@ -96,7 +103,7 @@ impl From<DenomMetadata> for Metadata {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct DenomUnit {
     /// denom represents the string name of the given denom unit (e.g uatom).
-    pub denom: String, // TODO: Use my Denom type instead
+    pub denom: Denom,
 
     /// exponent represents the power of 10 exponent that one must raise the base_denom to in order to equal the given DenomUnit's denom.
     /// 1 denom = 1^exponent base_denom
@@ -107,20 +114,22 @@ pub struct DenomUnit {
     pub aliases: Vec<String>,
 }
 
-impl From<cosmos::bank::v1beta1::DenomUnit> for DenomUnit {
-    fn from(du: cosmos::bank::v1beta1::DenomUnit) -> Self {
-        Self {
-            denom: du.denom,
+impl TryFrom<cosmos::bank::v1beta1::DenomUnit> for DenomUnit {
+    type Error = ChainError;
+
+    fn try_from(du: cosmos::bank::v1beta1::DenomUnit) -> Result<Self, Self::Error> {
+        Ok(Self {
+            denom: du.denom.parse()?,
             exponent: du.exponent,
             aliases: du.aliases,
-        }
+        })
     }
 }
 
 impl From<DenomUnit> for cosmos::bank::v1beta1::DenomUnit {
     fn from(du: DenomUnit) -> Self {
         Self {
-            denom: du.denom,
+            denom: du.denom.into(),
             exponent: du.exponent,
             aliases: du.aliases,
         }
@@ -138,12 +147,18 @@ pub struct Params {
     pub default_send_enabled: bool,
 }
 
-impl From<cosmos::bank::v1beta1::Params> for Params {
-    fn from(p: cosmos::bank::v1beta1::Params) -> Self {
-        Self {
-            send_enabled: p.send_enabled.into_iter().map(Into::into).collect(),
+impl TryFrom<cosmos::bank::v1beta1::Params> for Params {
+    type Error = ChainError;
+
+    fn try_from(p: cosmos::bank::v1beta1::Params) -> Result<Self, Self::Error> {
+        Ok(Self {
+            send_enabled: p
+                .send_enabled
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<_>, _>>()?,
             default_send_enabled: p.default_send_enabled,
-        }
+        })
     }
 }
 
@@ -159,23 +174,25 @@ impl From<Params> for cosmos::bank::v1beta1::Params {
 /// SendEnabled maps coin denom to a send_enabled status (whether a denom is sendable).
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct SendEnabled {
-    pub denom: String, // TODO: Use my Denom type instead
+    pub denom: Denom,
     pub enabled: bool,
 }
 
-impl From<cosmos::bank::v1beta1::SendEnabled> for SendEnabled {
-    fn from(se: cosmos::bank::v1beta1::SendEnabled) -> Self {
-        Self {
-            denom: se.denom,
+impl TryFrom<cosmos::bank::v1beta1::SendEnabled> for SendEnabled {
+    type Error = ChainError;
+
+    fn try_from(se: cosmos::bank::v1beta1::SendEnabled) -> Result<Self, Self::Error> {
+        Ok(Self {
+            denom: se.denom.parse()?,
             enabled: se.enabled,
-        }
+        })
     }
 }
 
 impl From<SendEnabled> for cosmos::bank::v1beta1::SendEnabled {
     fn from(se: SendEnabled) -> Self {
         Self {
-            denom: se.denom,
+            denom: se.denom.into(),
             enabled: se.enabled,
         }
     }

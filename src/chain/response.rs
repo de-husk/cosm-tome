@@ -172,7 +172,7 @@ impl From<BlockingTendermintResponse> for ChainTxResponse {
 impl TryFrom<CosmosResponse> for ChainTxResponse {
     type Error = ChainError;
 
-    fn try_from(res: CosmosResponse) -> Result<ChainTxResponse, Self::Error> {
+    fn try_from(res: CosmosResponse) -> Result<Self, Self::Error> {
         Ok(ChainTxResponse {
             res: ChainResponse {
                 code: res.code.into(),

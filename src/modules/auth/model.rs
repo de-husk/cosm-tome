@@ -68,9 +68,7 @@ impl From<Address> for AccountId {
 
 impl From<Address> for String {
     fn from(address: Address) -> Self {
-        // TODO: Replace to_string() with into() once this is released:
-        // https://github.com/cosmos/cosmos-rust/pull/301/files
-        address.0.to_string()
+        address.0.into()
     }
 }
 
@@ -88,7 +86,8 @@ pub struct Account {
 
 impl TryFrom<BaseAccount> for Account {
     type Error = AccountError;
-    fn try_from(proto: BaseAccount) -> Result<Account, Self::Error> {
+
+    fn try_from(proto: BaseAccount) -> Result<Self, Self::Error> {
         Ok(Account {
             address: proto.address.parse()?,
             pubkey: proto

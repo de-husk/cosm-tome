@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ChainConfig {
-    pub denom: String, // TODO: Use my denom type
+    pub denom: String,
     pub prefix: String,
     pub chain_id: String,
     pub rpc_endpoint: Option<String>,
