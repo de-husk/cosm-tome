@@ -1,5 +1,7 @@
 # Cosm-Tome
 
+[![cosm-tome on crates.io](https://img.shields.io/crates/v/cosm-tome.svg)](https://crates.io/crates/cosm-tome) [![Docs](https://docs.rs/cosm-tome/badge.svg)](https://docs.rs/cosm-tome)
+
 Easy to use, high level Cosmos SDK rust client library.
 
 ## Inspiration
