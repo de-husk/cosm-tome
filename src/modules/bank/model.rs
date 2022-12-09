@@ -212,7 +212,7 @@ impl fmt::Display for SendRequest {
         write!(f, "{} sends ", self.from)?;
 
         for a in &self.amounts {
-            write!(f, "{} ", a)?;
+            write!(f, "{a} ")?;
         }
 
         write!(f, "-> {}", self.to)

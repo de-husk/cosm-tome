@@ -2,9 +2,11 @@ use cosmrs::proto::prost::{DecodeError, EncodeError};
 use cosmrs::ErrorReport;
 use thiserror::Error;
 
+#[cfg(feature = "os_keyring")]
+pub use keyring::Error as KeyringError;
+
 pub use cosmrs::rpc::Error as TendermintRPCError;
 pub use cosmrs::tendermint::Error as TendermintError;
-pub use keyring::Error as KeyringError;
 pub use tonic::transport::Error as CosmosGRPCError;
 
 use super::response::ChainResponse;
@@ -41,6 +43,7 @@ pub enum ChainError {
     #[error("invalid cosmos msg sent to simulate endpoint")]
     Simulation,
 
+    #[cfg(feature = "os_keyring")]
     #[error(transparent)]
     Keyring(#[from] KeyringError),
 
