@@ -94,6 +94,11 @@ fn mnemonic_to_signing_key(
         .map_err(|_| ChainError::Mnemonic)?
         .to_seed("");
 
-    secp256k1::SigningKey::derive_from_path(seed, &derivation_path.parse().unwrap())
-        .map_err(|_| ChainError::DerviationPath)
+    secp256k1::SigningKey::derive_from_path(
+        seed,
+        &derivation_path
+            .parse()
+            .map_err(|_| ChainError::DerviationPath)?,
+    )
+    .map_err(|_| ChainError::DerviationPath)
 }
