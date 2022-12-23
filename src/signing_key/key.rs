@@ -80,7 +80,7 @@ impl TryFrom<&SigningKey> for secp256k1::SigningKey {
             #[cfg(feature = "os_keyring")]
             Key::Keyring(params) => {
                 let entry = Entry::new(&params.service, &params.key_name);
-                mnemonic_to_signing_key(&entry.get_password()?)
+                mnemonic_to_signing_key(&entry.get_password()?, &signer.derivation_path)
             }
         }
     }
