@@ -103,7 +103,7 @@ impl<T: CosmosClient> CosmTome<T> {
         let gas_limit = (gas_info.gas_used.value() as f64 * self.cfg.gas_adjustment).ceil();
         let amount = Coin {
             denom,
-            amount: ((gas_limit * self.cfg.gas_prices).ceil() as u64).into(),
+            amount: ((gas_limit * self.cfg.gas_price).ceil() as u64).into(),
         };
 
         let fee = Fee::new(amount, gas_limit as u64, None, None);

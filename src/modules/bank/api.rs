@@ -272,7 +272,7 @@ mod tests {
             chain_id: "test-1".to_string(),
             rpc_endpoint: Some("localhost".to_string()),
             grpc_endpoint: None,
-            gas_prices: 0.1,
+            gas_price: 0.1,
             gas_adjustment: 1.5,
         };
 
@@ -340,7 +340,7 @@ mod tests {
             chain_id: "test-1".to_string(),
             rpc_endpoint: None,
             grpc_endpoint: None,
-            gas_prices: 0.1,
+            gas_price: 0.1,
             gas_adjustment: 1.5,
         };
         let tx_options = TxOptions::default();
@@ -439,7 +439,7 @@ mod tests {
             chain_id: "test-1".to_string(),
             rpc_endpoint: None,
             grpc_endpoint: None,
-            gas_prices: 0.1,
+            gas_price: 0.1,
             gas_adjustment: 1.5,
         };
 
