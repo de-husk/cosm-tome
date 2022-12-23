@@ -242,6 +242,7 @@ impl<T: CosmosClient> CosmTome<T> {
 }
 
 #[cfg(test)]
+#[cfg(feature = "mocks")]
 mod tests {
     use crate::{
         chain::{

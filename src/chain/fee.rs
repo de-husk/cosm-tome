@@ -1,4 +1,5 @@
 use cosmrs::proto::cosmos::base::abci::v1beta1::GasInfo as ProtoGasInfo;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -67,7 +68,18 @@ impl TryFrom<Fee> for cosmrs::tx::Fee {
 }
 
 #[derive(
-    Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord, Default, Hash,
+    Copy,
+    Clone,
+    Debug,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Default,
+    Hash,
 )]
 pub struct Gas(u64);
 
@@ -113,7 +125,9 @@ impl From<u8> for Gas {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord, Default, Hash)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, PartialOrd, Ord, Default, Hash,
+)]
 pub struct GasInfo {
     pub gas_wanted: Gas,
     pub gas_used: Gas,

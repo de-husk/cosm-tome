@@ -8,6 +8,7 @@ use cosmrs::proto::{
     },
     Any,
 };
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::chain::coin::Denom;
@@ -20,31 +21,31 @@ use crate::{
 
 use super::error::BankError;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
 pub struct BalanceResponse {
     pub balance: Coin,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
 pub struct BalancesResponse {
     pub balances: Vec<Coin>,
 
     pub next: Option<PaginationResponse>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
 pub struct DenomMetadataResponse {
     pub meta: Option<DenomMetadata>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
 pub struct DenomsMetadataResponse {
     pub metas: Vec<DenomMetadata>,
 
     pub next: Option<PaginationResponse>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
 pub struct DenomMetadata {
     pub description: String,
 
@@ -100,7 +101,7 @@ impl From<DenomMetadata> for Metadata {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
 pub struct DenomUnit {
     /// denom represents the string name of the given denom unit (e.g uatom).
     pub denom: Denom,
@@ -136,12 +137,12 @@ impl From<DenomUnit> for ProtoDenomUnit {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Hash)]
 pub struct ParamsResponse {
     pub params: Option<Params>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Hash)]
 pub struct Params {
     pub send_enabled: Vec<SendEnabled>,
     pub default_send_enabled: bool,
@@ -172,7 +173,7 @@ impl From<Params> for ProtoParams {
 }
 
 /// SendEnabled maps coin denom to a send_enabled status (whether a denom is sendable).
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Hash)]
 pub struct SendEnabled {
     pub denom: Denom,
     pub enabled: bool,
@@ -276,7 +277,7 @@ impl TryFrom<SendRequest> for MsgSend {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
 pub struct SendResponse {
     pub res: ChainTxResponse,
 }

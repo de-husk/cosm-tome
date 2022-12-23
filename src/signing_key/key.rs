@@ -4,6 +4,8 @@ use cosmrs::crypto::secp256k1;
 
 #[cfg(feature = "os_keyring")]
 use keyring::Entry;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::chain::error::ChainError;
 use crate::modules::auth::model::Address;
@@ -11,7 +13,7 @@ use crate::modules::auth::model::Address;
 // https://github.com/confio/cosmos-hd-key-derivation-spec#the-cosmos-hub-path
 const DERVIATION_PATH: &str = "m/44'/118'/0'/0/0";
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct SigningKey {
     /// human readable key name
     pub name: String,
@@ -39,7 +41,7 @@ impl SigningKey {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Key {
     /// Mnemonic allows you to pass the private key mnemonic words
@@ -55,7 +57,7 @@ pub enum Key {
     // TODO: Add ledger support(under a new ledger feature flag / Key variant)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct KeyringParams {
     pub service: String,
     pub key_name: String,

@@ -1,8 +1,9 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 // TODO: Create a way to use the cosmos chain registry instead of manual
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, PartialEq)]
 pub struct ChainConfig {
     pub denom: String,
     pub prefix: String,
