@@ -109,6 +109,24 @@ impl AsRef<ChainTxResponse> for StoreCodeResponse {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
+pub struct StoreCodeBatchResponse {
+    pub code_ids: Vec<u64>,
+    pub res: ChainTxResponse,
+}
+
+impl StoreCodeBatchResponse {
+    pub fn data<'a, T: Deserialize<'a>>(&'a self) -> Result<T, DeserializeError> {
+        self.res.res.data()
+    }
+}
+
+impl AsRef<ChainTxResponse> for StoreCodeBatchResponse {
+    fn as_ref(&self) -> &ChainTxResponse {
+        &self.res
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct InstantiateRequest<S: Serialize> {
     pub code_id: u64,
