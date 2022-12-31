@@ -1,10 +1,11 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmrs::proto::cosmos::base::query::v1beta1::{PageRequest, PageResponse};
 
 use super::fee::Fee;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Hash)]
 pub struct PaginationRequest {
     pub page: PageID,
     pub limit: u64,
@@ -47,7 +48,7 @@ impl From<PageRequest> for PaginationRequest {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Hash)]
 pub enum PageID {
     /// key is the value in PaginationResponse.next_key used to query the next page.
     Key(Vec<u8>),
@@ -57,13 +58,13 @@ pub enum PageID {
     Offset(OffsetParams),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Hash, Default)]
 pub struct OffsetParams {
     pub offset: u64,
     pub count_total: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Hash, Default)]
 pub struct PaginationResponse {
     pub next_key: Vec<u8>,
     pub total: u64,

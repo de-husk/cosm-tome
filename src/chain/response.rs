@@ -12,12 +12,13 @@ use cosmrs::rpc::endpoint::{
     broadcast::tx_commit::{Response as BlockingTendermintResponse, TxResult},
     broadcast::tx_sync::Response as SyncTendermintResponse,
 };
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 use super::error::{ChainError, DeserializeError};
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Default)]
 pub struct ChainResponse {
     pub code: Code,
     pub data: Option<Vec<u8>>,
@@ -67,7 +68,7 @@ impl From<tonic::Status> for ChainResponse {
 }
 
 /// AsyncChainTxResponse is returned from the async `tx_broadcast()` api.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Default)]
 pub struct AsyncChainTxResponse {
     pub res: ChainResponse,
     pub tx_hash: String,
@@ -120,7 +121,7 @@ impl From<SyncTendermintResponse> for AsyncChainTxResponse {
 
 /// ChainTxResponse is returned from the blocking `tx_broadcast_block()` api.
 /// Since we wait for the tx to be commited in the next block, we get the full tx data.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Default)]
 pub struct ChainTxResponse {
     pub res: ChainResponse,
     pub events: Vec<Event>,
@@ -192,7 +193,9 @@ impl TryFrom<CosmosResponse> for ChainTxResponse {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+)]
 pub enum Code {
     Ok,
     Err(u32),
@@ -292,7 +295,7 @@ impl From<tonic::Code> for Code {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Hash)]
 pub struct Event {
     pub type_str: String,
     pub attributes: Vec<Tag>,
@@ -346,7 +349,7 @@ impl From<Event> for ProtoEvent {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Hash)]
 pub struct Tag {
     pub key: String,
     pub value: String,

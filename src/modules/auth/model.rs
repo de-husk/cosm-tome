@@ -2,6 +2,7 @@ use std::{fmt, str::FromStr};
 
 use cosmrs::proto::cosmos::auth::v1beta1::{BaseAccount, Params as CosmosParams};
 use cosmrs::{crypto::PublicKey, AccountId};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::chain::{error::ChainError, request::PaginationResponse};
@@ -113,12 +114,12 @@ pub struct AccountsResponse {
     pub next: Option<PaginationResponse>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Hash)]
 pub struct ParamsResponse {
     pub params: Option<Params>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Hash)]
 pub struct Params {
     pub max_memo_characters: u64,
     pub tx_sig_limit: u64,

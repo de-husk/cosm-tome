@@ -1,4 +1,3 @@
-use cosmrs::proto::Any;
 use serde::Serialize;
 
 use crate::chain::request::TxOptions;
@@ -12,7 +11,7 @@ use crate::{clients::client::CosmosClient, signing_key::key::SigningKey};
 
 use super::model::{
     ExecRequest, ExecResponse, InstantiateBatchResponse, InstantiateRequest, MigrateRequest,
-    MigrateResponse, QueryResponse, StoreCodeRequest,
+    MigrateResponse, QueryResponse, StoreCodeBatchResponse, StoreCodeRequest,
 };
 use super::{
     error::CosmwasmError,
@@ -20,31 +19,53 @@ use super::{
 };
 
 impl<T: CosmosClient> CosmTome<T> {
-    /// There is no batch version of `wasm_store` because the txs are already very large since
-    /// we send the entire wasm binary
     pub async fn wasm_store(
         &self,
         req: StoreCodeRequest,
         key: &SigningKey,
         tx_options: &TxOptions,
     ) -> Result<StoreCodeResponse, CosmwasmError> {
+        let mut res = self.wasm_store_batch(vec![req], key, tx_options).await?;
+
+        Ok(StoreCodeResponse {
+            code_id: res.code_ids.remove(0),
+            res: res.res,
+        })
+    }
+
+    pub async fn wasm_store_batch<I>(
+        &self,
+        reqs: I,
+        key: &SigningKey,
+        tx_options: &TxOptions,
+    ) -> Result<StoreCodeBatchResponse, CosmwasmError>
+    where
+        I: IntoIterator<Item = StoreCodeRequest>,
+    {
         let sender_addr = key.to_addr(&self.cfg.prefix)?;
 
-        let msg: Any = req.to_proto(sender_addr)?.try_into()?;
+        let protos = reqs
+            .into_iter()
+            .map(|r| r.to_proto(sender_addr.clone()))
+            .collect::<Result<Vec<_>, _>>()?;
 
-        let tx_raw = self.tx_sign(vec![msg], key, tx_options).await?;
+        let msgs = protos
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let tx_raw = self.tx_sign(msgs, key, tx_options).await?;
 
         let res = self.tx_broadcast_block(&tx_raw).await?;
 
-        let code_id = res
+        let code_ids = res
             .find_event_tags("store_code".to_string(), "code_id".to_string())
-            .get(0)
-            .ok_or(CosmwasmError::MissingEvent)?
-            .value
-            .parse::<u64>()
-            .unwrap();
+            .into_iter()
+            .map(|x| x.value.parse::<u64>())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|_| CosmwasmError::MissingEvent)?;
 
-        Ok(StoreCodeResponse { code_id, res })
+        Ok(StoreCodeBatchResponse { code_ids, res })
     }
 
     pub async fn wasm_instantiate<S>(

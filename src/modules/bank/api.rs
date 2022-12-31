@@ -242,6 +242,7 @@ impl<T: CosmosClient> CosmTome<T> {
 }
 
 #[cfg(test)]
+#[cfg(feature = "mocks")]
 mod tests {
     use crate::{
         chain::{
@@ -270,6 +271,7 @@ mod tests {
             denom: "utest".to_string(),
             prefix: "test".to_string(),
             chain_id: "test-1".to_string(),
+            derivation_path: "m/44'/118'/0'/0/0".to_string(),
             rpc_endpoint: Some("localhost".to_string()),
             grpc_endpoint: None,
             gas_price: 0.1,
@@ -277,7 +279,7 @@ mod tests {
         };
 
         let tx_options = TxOptions::default();
-        let key = SigningKey::random_mnemonic("test_key".to_string());
+        let key = SigningKey::random_mnemonic("test_key".to_string(), cfg.derivation_path.clone());
 
         let cosm_tome = CosmTome {
             cfg: cfg.clone(),
@@ -338,13 +340,14 @@ mod tests {
             denom: "utest".to_string(),
             prefix: "test".to_string(),
             chain_id: "test-1".to_string(),
+            derivation_path: "m/44'/118'/0'/0/0".to_string(),
             rpc_endpoint: None,
             grpc_endpoint: None,
             gas_price: 0.1,
             gas_adjustment: 1.5,
         };
         let tx_options = TxOptions::default();
-        let key = SigningKey::random_mnemonic("test_key".to_string());
+        let key = SigningKey::random_mnemonic("test_key".to_string(), cfg.derivation_path.clone());
 
         let mut mock_client = MockCosmosClient::new();
 
@@ -437,6 +440,7 @@ mod tests {
             denom: "utest".to_string(),
             prefix: "test".to_string(),
             chain_id: "test-1".to_string(),
+            derivation_path: "m/44'/118'/0'/0/0".to_string(),
             rpc_endpoint: None,
             grpc_endpoint: None,
             gas_price: 0.1,
@@ -444,7 +448,7 @@ mod tests {
         };
 
         let tx_options = TxOptions::default();
-        let key = SigningKey::random_mnemonic("test_key".to_string());
+        let key = SigningKey::random_mnemonic("test_key".to_string(), cfg.derivation_path.clone());
 
         let mut mock_client = MockCosmosClient::new();
 

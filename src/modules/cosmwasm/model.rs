@@ -7,6 +7,7 @@ use cosmrs::proto::{
     },
     Any,
 };
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::chain::error::DeserializeError;
@@ -90,7 +91,7 @@ impl TryFrom<StoreCodeProto> for MsgStoreCode {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
 pub struct StoreCodeResponse {
     pub code_id: u64,
     pub res: ChainTxResponse,
@@ -103,6 +104,24 @@ impl StoreCodeResponse {
 }
 
 impl AsRef<ChainTxResponse> for StoreCodeResponse {
+    fn as_ref(&self) -> &ChainTxResponse {
+        &self.res
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
+pub struct StoreCodeBatchResponse {
+    pub code_ids: Vec<u64>,
+    pub res: ChainTxResponse,
+}
+
+impl StoreCodeBatchResponse {
+    pub fn data<'a, T: Deserialize<'a>>(&'a self) -> Result<T, DeserializeError> {
+        self.res.res.data()
+    }
+}
+
+impl AsRef<ChainTxResponse> for StoreCodeBatchResponse {
     fn as_ref(&self) -> &ChainTxResponse {
         &self.res
     }
@@ -314,7 +333,7 @@ impl TryFrom<ExecRequestProto> for MsgExecuteContract {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
 pub struct ExecResponse {
     pub res: ChainTxResponse,
 }
@@ -331,7 +350,7 @@ impl AsRef<ChainTxResponse> for ExecResponse {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
 pub struct QueryResponse {
     pub res: ChainResponse,
 }
@@ -421,7 +440,7 @@ impl TryFrom<MigrateRequestProto> for MsgMigrateContract {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
 pub struct MigrateResponse {
     pub res: ChainTxResponse,
 }
@@ -492,7 +511,9 @@ impl TryFrom<ProtoAccessConfig> for AccessConfig {
     }
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[derive(
+    Copy, Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Hash, PartialOrd, Ord,
+)]
 #[repr(i32)]
 pub enum AccessType {
     /// ACCESS_TYPE_UNSPECIFIED placeholder for empty value

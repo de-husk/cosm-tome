@@ -1,11 +1,12 @@
 use std::{fmt, num::ParseIntError, str::FromStr};
 
 use regex::Regex;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::error::ChainError;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Hash)]
 pub struct Coin {
     pub denom: Denom,
     pub amount: u128,
@@ -64,7 +65,9 @@ impl From<Coin> for cosmrs::proto::cosmos::base::v1beta1::Coin {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(
+    Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, PartialOrd, Ord, Hash,
+)]
 pub struct Denom(String);
 
 impl AsRef<str> for Denom {

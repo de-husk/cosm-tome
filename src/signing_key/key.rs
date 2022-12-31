@@ -4,19 +4,21 @@ use cosmrs::crypto::secp256k1;
 
 #[cfg(feature = "os_keyring")]
 use keyring::Entry;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::chain::error::ChainError;
 use crate::modules::auth::model::Address;
 
-// https://github.com/confio/cosmos-hd-key-derivation-spec#the-cosmos-hub-path
-const DERVIATION_PATH: &str = "m/44'/118'/0'/0/0";
-
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct SigningKey {
     /// human readable key name
     pub name: String,
     /// private key associated with `name`
     pub key: Key,
+    /// derivation path associated with a specific chain
+    /// usually "m/44'/118'/0'/0/0"
+    pub derivation_path: String,
 }
 
 impl SigningKey {
@@ -29,17 +31,18 @@ impl SigningKey {
         Ok(account.into())
     }
 
-    pub fn random_mnemonic(key_name: String) -> SigningKey {
+    pub fn random_mnemonic(key_name: String, derivation_path: String) -> SigningKey {
         let mnemonic = bip32::Mnemonic::random(OsRng, Default::default());
 
         SigningKey {
             name: key_name,
             key: Key::Mnemonic(mnemonic.phrase().to_string()),
+            derivation_path,
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Key {
     /// Mnemonic allows you to pass the private key mnemonic words
@@ -55,7 +58,7 @@ pub enum Key {
     // TODO: Add ledger support(under a new ledger feature flag / Key variant)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct KeyringParams {
     pub service: String,
     pub key_name: String,
@@ -72,22 +75,30 @@ impl TryFrom<&SigningKey> for secp256k1::SigningKey {
     type Error = ChainError;
     fn try_from(signer: &SigningKey) -> Result<Self, Self::Error> {
         match &signer.key {
-            Key::Mnemonic(phrase) => mnemonic_to_signing_key(phrase),
+            Key::Mnemonic(phrase) => mnemonic_to_signing_key(phrase, &signer.derivation_path),
 
             #[cfg(feature = "os_keyring")]
             Key::Keyring(params) => {
                 let entry = Entry::new(&params.service, &params.key_name);
-                mnemonic_to_signing_key(&entry.get_password()?)
+                mnemonic_to_signing_key(&entry.get_password()?, &signer.derivation_path)
             }
         }
     }
 }
 
-fn mnemonic_to_signing_key(mnemonic: &str) -> Result<secp256k1::SigningKey, ChainError> {
+fn mnemonic_to_signing_key(
+    mnemonic: &str,
+    derivation_path: &str,
+) -> Result<secp256k1::SigningKey, ChainError> {
     let seed = bip32::Mnemonic::new(mnemonic, bip32::Language::English)
         .map_err(|_| ChainError::Mnemonic)?
         .to_seed("");
 
-    secp256k1::SigningKey::derive_from_path(seed, &DERVIATION_PATH.parse().unwrap())
-        .map_err(|_| ChainError::DerviationPath)
+    secp256k1::SigningKey::derive_from_path(
+        seed,
+        &derivation_path
+            .parse()
+            .map_err(|_| ChainError::DerviationPath)?,
+    )
+    .map_err(|_| ChainError::DerviationPath)
 }

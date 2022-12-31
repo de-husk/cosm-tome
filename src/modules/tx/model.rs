@@ -4,6 +4,7 @@ use cosmrs::proto::{
     traits::Message,
 };
 use cosmrs::tx::Raw;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::chain::error::ChainError;
@@ -13,7 +14,9 @@ use super::error::TxError;
 /// `BroadcastMode::Block` is deprecated and removed from latest version of cosmos-sdk.
 /// `BroadcastMode` only contains the non-deprecated async broadcasting modes, starting from 2
 /// for backwards compatability when converting between the cosmos-sdk proto.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(
+    Copy, Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, PartialOrd, Ord, Hash,
+)]
 #[repr(i32)]
 pub enum BroadcastMode {
     /// BROADCAST_MODE_SYNC defines a tx broadcasting mode where the client waits for a CheckTx execution response only.
