@@ -18,7 +18,7 @@ pub struct ChainConfig {
     /// example: "https://terra-testnet-grpc.polkachu.com:11790"
     pub grpc_endpoint: Option<String>,
     /// example: 0.025
-    pub gas_prices: f64,
+    pub gas_price: f64,
     /// example: 1.3
     pub gas_adjustment: f64,
 }
