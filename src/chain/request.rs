@@ -92,7 +92,7 @@ impl From<PaginationResponse> for PageResponse {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct TxOptions {
     /// The block height after which this transaction will not be processed by the chain
-    pub timeout_height: Option<u16>,
+    pub timeout_height: Option<u64>,
 
     /// If set will use this fee, instead of the simulated gas price
     pub fee: Option<Fee>,
