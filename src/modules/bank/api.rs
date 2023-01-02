@@ -20,7 +20,7 @@ use super::{
     error::BankError,
     model::{
         BalanceResponse, BalancesResponse, DenomMetadataResponse, DenomsMetadataResponse,
-        ParamsResponse, SendRequest,
+        ParamsResponse, SendRequest, SendRequestProto,
     },
 };
 
@@ -44,12 +44,16 @@ impl<T: CosmosClient> CosmTome<T> {
     where
         I: IntoIterator<Item = SendRequest>,
     {
+        let sender_addr = key.to_addr(&self.cfg.prefix).await?;
+
         let msgs = reqs
             .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<_>, _>>()?;
+            .map(Into::into)
+            .collect::<Vec<SendRequestProto>>();
 
-        let tx_raw = self.tx_sign(msgs, key, tx_options).await?;
+        let tx_raw = self
+            .tx_sign(msgs, Some(sender_addr), key, tx_options)
+            .await?;
 
         let res = self.tx_broadcast_block(&tx_raw).await?;
 

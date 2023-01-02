@@ -1,17 +1,14 @@
 use std::fmt;
 
-use cosmrs::proto::traits::MessageExt;
-use cosmrs::proto::{
-    cosmos::bank::v1beta1::{
-        DenomUnit as ProtoDenomUnit, Metadata, MsgSend, Params as ProtoParams,
-        SendEnabled as ProtoSendEnabled,
-    },
-    Any,
+use cosmrs::proto::cosmos::bank::v1beta1::{
+    DenomUnit as ProtoDenomUnit, Metadata, MsgSend, Params as ProtoParams,
+    SendEnabled as ProtoSendEnabled,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::chain::coin::Denom;
+use crate::chain::msg::Msg;
 use crate::{
     chain::{
         coin::Coin, error::ChainError, request::PaginationResponse, response::ChainTxResponse,
@@ -220,23 +217,9 @@ impl fmt::Display for SendRequest {
     }
 }
 
-impl TryFrom<SendRequest> for Any {
-    type Error = BankError;
-
-    fn try_from(req: SendRequest) -> Result<Self, Self::Error> {
-        let proto: MsgSend = req.try_into()?;
-        Ok(proto.to_any().map_err(ChainError::prost_proto_encoding)?)
-    }
-}
-
-impl TryFrom<Any> for SendRequest {
-    type Error = BankError;
-
-    fn try_from(any: Any) -> Result<Self, Self::Error> {
-        MsgSend::from_any(&any)
-            .map_err(ChainError::prost_proto_decoding)?
-            .try_into()
-    }
+impl Msg for SendRequestProto {
+    type Proto = MsgSend;
+    type Err = BankError;
 }
 
 impl TryFrom<MsgSend> for SendRequest {
