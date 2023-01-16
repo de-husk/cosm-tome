@@ -1,11 +1,13 @@
 use cosmrs::proto::cosmos::tx::v1beta1::TxRaw;
-use cosmrs::tx::{SignDoc, SignerInfo};
-use cosmrs::{crypto::secp256k1, tx::Body};
+use cosmrs::tx::Body;
+use cosmrs::tx::SignerInfo;
+use serde::Serialize;
 
 use crate::chain::coin::{Coin, Denom};
 use crate::chain::error::ChainError;
+use crate::chain::msg::Msg;
 use crate::chain::response::AsyncChainTxResponse;
-use crate::modules::auth::model::Account;
+use crate::modules::auth::model::{Account, Address};
 use crate::{
     chain::{fee::Fee, request::TxOptions, response::ChainTxResponse, Any},
     clients::client::{CosmTome, CosmosClient},
@@ -21,26 +23,34 @@ use super::model::{BroadcastMode, RawTx};
 // * tx_query_get_block_with_txs()
 
 impl<T: CosmosClient> CosmTome<T> {
-    pub async fn tx_sign<I>(
+    pub async fn tx_sign(
         &self,
-        msgs: I,
+        msgs: Vec<impl Msg + Serialize>,
+        sender_addr: Option<Address>,
         key: &SigningKey,
         tx_options: &TxOptions,
-    ) -> Result<RawTx, TxError>
-    where
-        I: IntoIterator<Item = Any>,
-    {
-        let sender_addr = key.to_addr(&self.cfg.prefix)?;
+    ) -> Result<RawTx, TxError> {
+        let sender_addr = if let Some(sender_addr) = sender_addr {
+            sender_addr
+        } else {
+            key.to_addr(&self.cfg.prefix).await?
+        };
+
         let timeout_height = tx_options.timeout_height.unwrap_or_default();
-
-        let tx = Body::new(msgs, &tx_options.memo, timeout_height);
-
         let account = self.auth_query_account(sender_addr).await?.account;
-        let account_number = account.account_number;
-        let sequence = account.sequence;
 
         // even if the user is supplying their own `Fee`, we will simulate the tx to ensure its valid
-        let sim_fee = self.tx_simulate(tx.messages.clone(), account).await?; // TODO: Stop cloning msgs
+        let sim_fee = self
+            .tx_simulate(
+                msgs.iter()
+                    .map(|m| m.to_any())
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|e| ChainError::ProtoEncoding {
+                        message: e.to_string(),
+                    })?,
+                &account,
+            )
+            .await?;
 
         let fee = if let Some(fee) = &tx_options.fee {
             fee.clone()
@@ -48,29 +58,22 @@ impl<T: CosmosClient> CosmTome<T> {
             sim_fee
         };
 
-        // NOTE: if we are making requests in parallel with the same key, we need to serialize `account.sequence` to avoid errors
-        let signing_key: secp256k1::SigningKey = key.try_into()?;
-        let auth_info = SignerInfo::single_direct(Some(signing_key.public_key()), sequence)
-            .auth_info(fee.try_into()?);
-
-        let sign_doc = SignDoc::new(
-            &tx,
-            &auth_info,
-            &self.cfg.chain_id.parse().map_err(|_| ChainError::ChainId {
-                chain_id: self.cfg.chain_id.to_string(),
-            })?,
-            account_number,
-        )
-        .map_err(ChainError::proto_encoding)?;
-
-        let raw = sign_doc.sign(&signing_key).map_err(ChainError::crypto)?;
-
-        Ok(raw.into())
+        let raw = key
+            .sign(
+                msgs,
+                timeout_height,
+                &tx_options.memo,
+                account,
+                fee,
+                &self.cfg,
+            )
+            .await?;
+        Ok(raw)
     }
 
     // Sends tx with an empty public_key / signature, like they do in the cosmos-sdk:
     // https://github.com/cosmos/cosmos-sdk/blob/main/client/tx/tx.go#L133
-    pub async fn tx_simulate<I>(&self, msgs: I, account: Account) -> Result<Fee, TxError>
+    pub async fn tx_simulate<I>(&self, msgs: I, account: &Account) -> Result<Fee, TxError>
     where
         I: IntoIterator<Item = Any>,
     {
