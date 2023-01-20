@@ -194,17 +194,23 @@ impl TryFrom<CosmosResponse> for ChainTxResponse {
 }
 
 #[derive(
-    Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    Eq,
+    Hash,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    JsonSchema,
 )]
 pub enum Code {
+    #[default]
     Ok,
     Err(u32),
-}
-
-impl Default for Code {
-    fn default() -> Code {
-        Code::Ok
-    }
 }
 
 impl Code {
