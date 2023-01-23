@@ -30,6 +30,11 @@ pub struct SigningKey {
 impl SigningKey {
     pub async fn public_key(&self) -> Result<PublicKey, ChainError> {
         match &self.key {
+            Key::Raw(bytes) => {
+                let key = raw_bytes_to_signing_key(bytes)?;
+                Ok(key.public_key())
+            }
+
             Key::Mnemonic(phrase) => {
                 let key = mnemonic_to_signing_key(phrase, &self.derivation_path)?;
                 Ok(key.public_key())
@@ -60,6 +65,16 @@ impl SigningKey {
         };
 
         match &self.key {
+            Key::Raw(bytes) => {
+                let sign_doc =
+                    build_sign_doc(msgs, timeout_height, memo, &account, fee, public_key, cfg)?;
+
+                let key = raw_bytes_to_signing_key(bytes)?;
+
+                let raw = sign_doc.sign(&key).map_err(ChainError::crypto)?;
+                Ok(raw.into())
+            }
+
             Key::Mnemonic(phrase) => {
                 let sign_doc =
                     build_sign_doc(msgs, timeout_height, memo, &account, fee, public_key, cfg)?;
@@ -107,6 +122,9 @@ impl SigningKey {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Key {
+    /// Create a key from a set of bytes.
+    Raw(Vec<u8>),
+
     /// Mnemonic allows you to pass the private key mnemonic words
     /// to Cosm-orc for configuring a transaction signing key.
     /// DO NOT USE FOR MAINNET
@@ -141,6 +159,10 @@ fn mnemonic_to_signing_key(
             .map_err(|_| ChainError::DerviationPath)?,
     )
     .map_err(|_| ChainError::DerviationPath)
+}
+
+fn raw_bytes_to_signing_key(bytes: &[u8]) -> Result<secp256k1::SigningKey, ChainError> {
+    secp256k1::SigningKey::from_bytes(bytes).map_err(ChainError::crypto)
 }
 
 fn build_sign_doc(
