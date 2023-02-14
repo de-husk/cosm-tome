@@ -17,6 +17,7 @@ mocks = ["mockall"]
 os_keyring = ["keyring"]
 
 [dependencies]
+tendermint-rpc = { version = "0.28", features = ["websocket-client"] }
 cosmrs = { version = "0.10.0", features = ["rpc", "cosmwasm", "grpc"] }
 tonic = { version = "0.8.2", default-features=false, features = ["transport", "prost"] }
 

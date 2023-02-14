@@ -1,3 +1,5 @@
+use std::convert::Infallible;
+
 use cosmrs::proto::prost::{DecodeError, EncodeError};
 use cosmrs::ErrorReport;
 use thiserror::Error;
@@ -52,6 +54,12 @@ pub enum ChainError {
 
     #[error("Tendermint error")]
     Tendermint(#[from] TendermintError),
+
+    #[error("Tendermint_rpc error")]
+    TendermintRpc(#[from] tendermint_rpc::Error),
+
+    #[error("Infallible error")]
+    Infallible(#[from] Infallible),
 
     /// Tendermint RPC client errors
     #[error(transparent)]
