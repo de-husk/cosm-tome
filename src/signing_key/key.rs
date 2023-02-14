@@ -1,6 +1,8 @@
 use cosmrs::bip32;
 use cosmrs::bip32::secp256k1::elliptic_curve::rand_core::OsRng;
-use cosmrs::crypto::secp256k1;
+use cosmrs::crypto::{secp256k1, PublicKey};
+use cosmrs::tendermint::block::Height;
+use cosmrs::tx::{Body, SignDoc, SignerInfo};
 
 #[cfg(feature = "os_keyring")]
 use keyring::Entry;
@@ -8,7 +10,11 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::chain::error::ChainError;
-use crate::modules::auth::model::Address;
+use crate::chain::fee::Fee;
+use crate::chain::msg::Msg;
+use crate::config::cfg::ChainConfig;
+use crate::modules::auth::model::{Account, Address};
+use crate::modules::tx::model::RawTx;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct SigningKey {
@@ -22,10 +28,81 @@ pub struct SigningKey {
 }
 
 impl SigningKey {
-    pub fn to_addr(&self, prefix: &str) -> Result<Address, ChainError> {
-        let key: secp256k1::SigningKey = self.try_into()?;
-        let account = key
+    pub async fn public_key(&self) -> Result<PublicKey, ChainError> {
+        match &self.key {
+            Key::Raw(bytes) => {
+                let key = raw_bytes_to_signing_key(bytes)?;
+                Ok(key.public_key())
+            }
+
+            Key::Mnemonic(phrase) => {
+                let key = mnemonic_to_signing_key(phrase, &self.derivation_path)?;
+                Ok(key.public_key())
+            }
+
+            #[cfg(feature = "os_keyring")]
+            Key::Keyring(params) => {
+                let entry = Entry::new(&params.service, &params.key_name);
+                let key = mnemonic_to_signing_key(&entry.get_password()?, &self.derivation_path)?;
+                Ok(key.public_key())
+            }
+        }
+    }
+
+    pub async fn sign(
+        &self,
+        msgs: Vec<impl Msg + Serialize>,
+        timeout_height: u64,
+        memo: &str,
+        account: Account,
+        fee: Fee,
+        cfg: &ChainConfig,
+    ) -> Result<RawTx, ChainError> {
+        let public_key = if account.pubkey.is_none() {
+            Some(self.public_key().await?)
+        } else {
+            account.pubkey
+        };
+
+        match &self.key {
+            Key::Raw(bytes) => {
+                let sign_doc =
+                    build_sign_doc(msgs, timeout_height, memo, &account, fee, public_key, cfg)?;
+
+                let key = raw_bytes_to_signing_key(bytes)?;
+
+                let raw = sign_doc.sign(&key).map_err(ChainError::crypto)?;
+                Ok(raw.into())
+            }
+
+            Key::Mnemonic(phrase) => {
+                let sign_doc =
+                    build_sign_doc(msgs, timeout_height, memo, &account, fee, public_key, cfg)?;
+
+                let key = mnemonic_to_signing_key(phrase, &self.derivation_path)?;
+
+                let raw = sign_doc.sign(&key).map_err(ChainError::crypto)?;
+                Ok(raw.into())
+            }
+
+            #[cfg(feature = "os_keyring")]
+            Key::Keyring(params) => {
+                let sign_doc =
+                    build_sign_doc(msgs, timeout_height, memo, &account, fee, public_key, cfg)?;
+
+                let entry = Entry::new(&params.service, &params.key_name);
+                let key = mnemonic_to_signing_key(&entry.get_password()?, &self.derivation_path)?;
+
+                let raw = sign_doc.sign(&key).map_err(ChainError::crypto)?;
+                Ok(raw.into())
+            }
+        }
+    }
+
+    pub async fn to_addr(&self, prefix: &str) -> Result<Address, ChainError> {
+        let account = self
             .public_key()
+            .await?
             .account_id(prefix)
             .map_err(ChainError::crypto)?;
         Ok(account.into())
@@ -45,6 +122,9 @@ impl SigningKey {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Key {
+    /// Create a key from a set of bytes.
+    Raw(Vec<u8>),
+
     /// Mnemonic allows you to pass the private key mnemonic words
     /// to Cosm-orc for configuring a transaction signing key.
     /// DO NOT USE FOR MAINNET
@@ -64,28 +144,6 @@ pub struct KeyringParams {
     pub key_name: String,
 }
 
-impl TryFrom<SigningKey> for secp256k1::SigningKey {
-    type Error = ChainError;
-    fn try_from(signer: SigningKey) -> Result<Self, Self::Error> {
-        secp256k1::SigningKey::try_from(&signer)
-    }
-}
-
-impl TryFrom<&SigningKey> for secp256k1::SigningKey {
-    type Error = ChainError;
-    fn try_from(signer: &SigningKey) -> Result<Self, Self::Error> {
-        match &signer.key {
-            Key::Mnemonic(phrase) => mnemonic_to_signing_key(phrase, &signer.derivation_path),
-
-            #[cfg(feature = "os_keyring")]
-            Key::Keyring(params) => {
-                let entry = Entry::new(&params.service, &params.key_name);
-                mnemonic_to_signing_key(&entry.get_password()?, &signer.derivation_path)
-            }
-        }
-    }
-}
-
 fn mnemonic_to_signing_key(
     mnemonic: &str,
     derivation_path: &str,
@@ -101,4 +159,45 @@ fn mnemonic_to_signing_key(
             .map_err(|_| ChainError::DerviationPath)?,
     )
     .map_err(|_| ChainError::DerviationPath)
+}
+
+fn raw_bytes_to_signing_key(bytes: &[u8]) -> Result<secp256k1::SigningKey, ChainError> {
+    secp256k1::SigningKey::from_bytes(bytes).map_err(ChainError::crypto)
+}
+
+fn build_sign_doc(
+    msgs: Vec<impl Msg>,
+    timeout_height: u64,
+    memo: &str,
+    account: &Account,
+    fee: Fee,
+    public_key: Option<PublicKey>,
+    cfg: &ChainConfig,
+) -> Result<SignDoc, ChainError> {
+    let timeout: Height = timeout_height.try_into()?;
+
+    let tx = Body::new(
+        msgs.into_iter()
+            .map(|m| m.into_any())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| ChainError::ProtoEncoding {
+                message: e.to_string(),
+            })?,
+        memo,
+        timeout,
+    );
+
+    // NOTE: if we are making requests in parallel with the same key, we need to serialize `account.sequence` to avoid errors
+    let auth_info =
+        SignerInfo::single_direct(public_key, account.sequence).auth_info(fee.try_into()?);
+
+    SignDoc::new(
+        &tx,
+        &auth_info,
+        &cfg.chain_id.parse().map_err(|_| ChainError::ChainId {
+            chain_id: cfg.chain_id.to_string(),
+        })?,
+        account.account_number,
+    )
+    .map_err(ChainError::proto_encoding)
 }

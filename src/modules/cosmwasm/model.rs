@@ -1,20 +1,16 @@
 use cosmrs::proto::cosmwasm::wasm::v1::MsgStoreCode;
-use cosmrs::proto::traits::MessageExt;
-use cosmrs::proto::{
-    cosmwasm::wasm::v1::{
-        AccessConfig as ProtoAccessConfig, AccessType as ProtoAccessType, MsgExecuteContract,
-        MsgInstantiateContract, MsgMigrateContract, QuerySmartContractStateResponse,
-    },
-    Any,
+use cosmrs::proto::cosmwasm::wasm::v1::{
+    AccessConfig as ProtoAccessConfig, AccessType as ProtoAccessType, MsgExecuteContract,
+    MsgInstantiateContract, MsgMigrateContract, QuerySmartContractStateResponse,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::chain::error::DeserializeError;
+use crate::chain::msg::Msg;
 use crate::{
     chain::{
         coin::Coin,
-        error::ChainError,
         response::{ChainResponse, ChainTxResponse, Code},
     },
     modules::auth::model::Address,
@@ -45,23 +41,9 @@ pub struct StoreCodeProto {
     pub instantiate_perms: Option<AccessConfig>,
 }
 
-impl TryFrom<StoreCodeProto> for Any {
-    type Error = CosmwasmError;
-
-    fn try_from(req: StoreCodeProto) -> Result<Self, Self::Error> {
-        let proto: MsgStoreCode = req.try_into()?;
-        Ok(proto.to_any().map_err(ChainError::prost_proto_encoding)?)
-    }
-}
-
-impl TryFrom<Any> for StoreCodeProto {
-    type Error = CosmwasmError;
-
-    fn try_from(any: Any) -> Result<Self, Self::Error> {
-        MsgStoreCode::from_any(&any)
-            .map_err(ChainError::prost_proto_decoding)?
-            .try_into()
-    }
+impl Msg for StoreCodeProto {
+    type Proto = MsgStoreCode;
+    type Err = CosmwasmError;
 }
 
 impl TryFrom<MsgStoreCode> for StoreCodeProto {
@@ -161,23 +143,9 @@ pub struct InstantiateRequestProto {
     pub funds: Vec<Coin>,
 }
 
-impl TryFrom<InstantiateRequestProto> for Any {
-    type Error = CosmwasmError;
-
-    fn try_from(req: InstantiateRequestProto) -> Result<Self, Self::Error> {
-        let proto: MsgInstantiateContract = req.try_into()?;
-        Ok(proto.to_any().map_err(ChainError::prost_proto_encoding)?)
-    }
-}
-
-impl TryFrom<Any> for InstantiateRequestProto {
-    type Error = CosmwasmError;
-
-    fn try_from(any: Any) -> Result<Self, Self::Error> {
-        MsgInstantiateContract::from_any(&any)
-            .map_err(ChainError::prost_proto_decoding)?
-            .try_into()
-    }
+impl Msg for InstantiateRequestProto {
+    type Proto = MsgInstantiateContract;
+    type Err = CosmwasmError;
 }
 
 impl TryFrom<MsgInstantiateContract> for InstantiateRequestProto {
@@ -284,23 +252,9 @@ pub struct ExecRequestProto {
     pub funds: Vec<Coin>,
 }
 
-impl TryFrom<ExecRequestProto> for Any {
-    type Error = CosmwasmError;
-
-    fn try_from(req: ExecRequestProto) -> Result<Self, Self::Error> {
-        let proto: MsgExecuteContract = req.try_into()?;
-        Ok(proto.to_any().map_err(ChainError::prost_proto_encoding)?)
-    }
-}
-
-impl TryFrom<Any> for ExecRequestProto {
-    type Error = CosmwasmError;
-
-    fn try_from(any: Any) -> Result<Self, Self::Error> {
-        MsgExecuteContract::from_any(&any)
-            .map_err(ChainError::prost_proto_decoding)?
-            .try_into()
-    }
+impl Msg for ExecRequestProto {
+    type Proto = MsgExecuteContract;
+    type Err = CosmwasmError;
 }
 
 impl TryFrom<MsgExecuteContract> for ExecRequestProto {
@@ -395,23 +349,9 @@ pub struct MigrateRequestProto {
     pub msg: Vec<u8>,
 }
 
-impl TryFrom<MigrateRequestProto> for Any {
-    type Error = CosmwasmError;
-
-    fn try_from(req: MigrateRequestProto) -> Result<Self, Self::Error> {
-        let proto: MsgMigrateContract = req.try_into()?;
-        Ok(proto.to_any().map_err(ChainError::prost_proto_encoding)?)
-    }
-}
-
-impl TryFrom<Any> for MigrateRequestProto {
-    type Error = CosmwasmError;
-
-    fn try_from(any: Any) -> Result<Self, Self::Error> {
-        MsgMigrateContract::from_any(&any)
-            .map_err(ChainError::prost_proto_decoding)?
-            .try_into()
-    }
+impl Msg for MigrateRequestProto {
+    type Proto = MsgMigrateContract;
+    type Err = CosmwasmError;
 }
 
 impl TryFrom<MsgMigrateContract> for MigrateRequestProto {

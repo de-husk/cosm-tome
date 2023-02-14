@@ -194,17 +194,23 @@ impl TryFrom<CosmosResponse> for ChainTxResponse {
 }
 
 #[derive(
-    Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord, Serialize, Deserialize, JsonSchema,
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    Eq,
+    Hash,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    JsonSchema,
 )]
 pub enum Code {
+    #[default]
     Ok,
     Err(u32),
-}
-
-impl Default for Code {
-    fn default() -> Code {
-        Code::Ok
-    }
 }
 
 impl Code {
@@ -397,5 +403,58 @@ impl TryFrom<EventAttribute> for Tag {
                 message: e.to_string(),
             })?,
         })
+    }
+}
+
+impl From<tendermint_rpc::endpoint::abci_query::AbciQuery> for ChainResponse {
+    fn from(res: tendermint_rpc::endpoint::abci_query::AbciQuery) -> ChainResponse {
+        ChainResponse {
+            code: todo!(), // res.code.into(),
+            data: Some(res.value),
+            log: res.log.to_string(),
+        }
+    }
+}
+
+impl From<tendermint_rpc::endpoint::broadcast::tx_async::Response> for AsyncChainTxResponse {
+    fn from(res: tendermint_rpc::endpoint::broadcast::tx_async::Response) -> Self {
+        Self {
+            res: ChainResponse {
+                code: todo!(), // res.code.into(),
+                data: Some(res.data.into()),
+                log: res.log.to_string(),
+            },
+            tx_hash: res.hash.to_string(),
+        }
+    }
+}
+
+impl From<tendermint_rpc::endpoint::broadcast::tx_sync::Response> for AsyncChainTxResponse {
+    fn from(res: tendermint_rpc::endpoint::broadcast::tx_sync::Response) -> Self {
+        Self {
+            res: ChainResponse {
+                code: todo!(), // res.code.into(),
+                data: Some(res.data.into()),
+                log: res.log.to_string(),
+            },
+            tx_hash: res.hash.to_string(),
+        }
+    }
+}
+
+impl From<tendermint_rpc::Code> for Code {
+    fn from(value: tendermint_rpc::Code) -> Code {
+        match value {
+            tendermint_rpc::Code::HttpError => todo!(),
+            tendermint_rpc::Code::WebSocketError => todo!(),
+            tendermint_rpc::Code::ClientInternalError => todo!(),
+            tendermint_rpc::Code::ParseError => todo!(),
+            tendermint_rpc::Code::InvalidRequest => todo!(),
+            tendermint_rpc::Code::MethodNotFound => todo!(),
+            tendermint_rpc::Code::InvalidParams => todo!(),
+            tendermint_rpc::Code::InternalError => todo!(),
+            tendermint_rpc::Code::ServerError => todo!(),
+            tendermint_rpc::Code::Other(_) => todo!(),
+        }
     }
 }

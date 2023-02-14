@@ -42,19 +42,16 @@ impl<T: CosmosClient> CosmTome<T> {
     where
         I: IntoIterator<Item = StoreCodeRequest>,
     {
-        let sender_addr = key.to_addr(&self.cfg.prefix)?;
+        let sender_addr = key.to_addr(&self.cfg.prefix).await?;
 
-        let protos = reqs
+        let msgs = reqs
             .into_iter()
             .map(|r| r.to_proto(sender_addr.clone()))
             .collect::<Result<Vec<_>, _>>()?;
 
-        let msgs = protos
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let tx_raw = self.tx_sign(msgs, key, tx_options).await?;
+        let tx_raw = self
+            .tx_sign(msgs, Some(sender_addr), key, tx_options)
+            .await?;
 
         let res = self.tx_broadcast_block(&tx_raw).await?;
 
@@ -97,19 +94,16 @@ impl<T: CosmosClient> CosmTome<T> {
         S: Serialize,
         I: IntoIterator<Item = InstantiateRequest<S>>,
     {
-        let sender_addr = key.to_addr(&self.cfg.prefix)?;
+        let sender_addr = key.to_addr(&self.cfg.prefix).await?;
 
-        let protos = reqs
+        let msgs = reqs
             .into_iter()
             .map(|r| r.to_proto(sender_addr.clone()))
             .collect::<Result<Vec<_>, _>>()?;
 
-        let msgs = protos
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let tx_raw = self.tx_sign(msgs, key, tx_options).await?;
+        let tx_raw = self
+            .tx_sign(msgs, Some(sender_addr), key, tx_options)
+            .await?;
 
         let res = self.tx_broadcast_block(&tx_raw).await?;
 
@@ -153,19 +147,16 @@ impl<T: CosmosClient> CosmTome<T> {
         S: Serialize,
         I: IntoIterator<Item = ExecRequest<S>>,
     {
-        let sender_addr = key.to_addr(&self.cfg.prefix)?;
+        let sender_addr = key.to_addr(&self.cfg.prefix).await?;
 
-        let protos = reqs
+        let msgs = reqs
             .into_iter()
             .map(|r| r.to_proto(sender_addr.clone()))
             .collect::<Result<Vec<_>, _>>()?;
 
-        let msgs = protos
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let tx_raw = self.tx_sign(msgs, key, tx_options).await?;
+        let tx_raw = self
+            .tx_sign(msgs, Some(sender_addr), key, tx_options)
+            .await?;
 
         let res = self.tx_broadcast_block(&tx_raw).await?;
 
@@ -217,19 +208,16 @@ impl<T: CosmosClient> CosmTome<T> {
         S: Serialize,
         I: IntoIterator<Item = MigrateRequest<S>>,
     {
-        let sender_addr = key.to_addr(&self.cfg.prefix)?;
+        let sender_addr = key.to_addr(&self.cfg.prefix).await?;
 
-        let protos = reqs
+        let msgs = reqs
             .into_iter()
             .map(|r| r.to_proto(sender_addr.clone()))
             .collect::<Result<Vec<_>, _>>()?;
 
-        let msgs = protos
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let tx_raw = self.tx_sign(msgs, key, tx_options).await?;
+        let tx_raw = self
+            .tx_sign(msgs, Some(sender_addr), key, tx_options)
+            .await?;
 
         let res = self.tx_broadcast_block(&tx_raw).await?;
 
