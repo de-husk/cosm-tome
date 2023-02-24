@@ -80,13 +80,13 @@ impl TryFrom<ProtoValidator> for Validator {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub struct LatestValidatorSetResponse {
+pub struct ValidatorSetResponse {
     pub block_height: u64,
     pub validators: Vec<Validator>,
     pub next: Option<PaginationResponse>,
 }
 
-impl TryFrom<GetLatestValidatorSetResponse> for LatestValidatorSetResponse {
+impl TryFrom<GetLatestValidatorSetResponse> for ValidatorSetResponse {
     type Error = TendermintError;
 
     fn try_from(res: GetLatestValidatorSetResponse) -> Result<Self, Self::Error> {
@@ -102,8 +102,8 @@ impl TryFrom<GetLatestValidatorSetResponse> for LatestValidatorSetResponse {
     }
 }
 
-impl From<LatestValidatorSetResponse> for GetLatestValidatorSetResponse {
-    fn from(res: LatestValidatorSetResponse) -> Self {
+impl From<ValidatorSetResponse> for GetLatestValidatorSetResponse {
+    fn from(res: ValidatorSetResponse) -> Self {
         Self {
             block_height: res.block_height as i64,
             validators: res.validators.into_iter().map(Into::into).collect(),
@@ -112,7 +112,7 @@ impl From<LatestValidatorSetResponse> for GetLatestValidatorSetResponse {
     }
 }
 
-impl TryFrom<GetValidatorSetByHeightResponse> for LatestValidatorSetResponse {
+impl TryFrom<GetValidatorSetByHeightResponse> for ValidatorSetResponse {
     type Error = TendermintError;
 
     fn try_from(res: GetValidatorSetByHeightResponse) -> Result<Self, Self::Error> {
@@ -128,8 +128,8 @@ impl TryFrom<GetValidatorSetByHeightResponse> for LatestValidatorSetResponse {
     }
 }
 
-impl From<LatestValidatorSetResponse> for GetValidatorSetByHeightResponse {
-    fn from(res: LatestValidatorSetResponse) -> Self {
+impl From<ValidatorSetResponse> for GetValidatorSetByHeightResponse {
+    fn from(res: ValidatorSetResponse) -> Self {
         Self {
             block_height: res.block_height as i64,
             validators: res.validators.into_iter().map(Into::into).collect(),

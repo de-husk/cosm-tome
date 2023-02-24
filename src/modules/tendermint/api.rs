@@ -10,7 +10,7 @@ use crate::{
 
 use super::{
     error::TendermintError,
-    model::{BlockResponse, LatestValidatorSetResponse},
+    model::{BlockResponse, ValidatorSetResponse},
 };
 
 impl<T: CosmosClient> CosmTome<T> {
@@ -31,7 +31,7 @@ impl<T: CosmosClient> CosmTome<T> {
     pub async fn tendermint_query_latest_validator_set(
         &self,
         pagination: Option<PaginationRequest>,
-    ) -> Result<LatestValidatorSetResponse, TendermintError> {
+    ) -> Result<ValidatorSetResponse, TendermintError> {
         let req = GetLatestValidatorSetRequest {
             pagination: pagination.map(Into::into),
         };
@@ -51,7 +51,7 @@ impl<T: CosmosClient> CosmTome<T> {
         &self,
         block_height: u64,
         pagination: Option<PaginationRequest>,
-    ) -> Result<LatestValidatorSetResponse, TendermintError> {
+    ) -> Result<ValidatorSetResponse, TendermintError> {
         let req = GetValidatorSetByHeightRequest {
             height: block_height as i64,
             pagination: pagination.map(Into::into),
