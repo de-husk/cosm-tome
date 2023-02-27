@@ -41,7 +41,7 @@ pub trait CosmosClient {
 #[derive(Clone, Debug)]
 pub struct CosmTome<T: CosmosClient> {
     pub(crate) cfg: ChainConfig,
-    pub(crate) client: T,
+    pub client: T,
 }
 
 impl<T: CosmosClient> CosmTome<T> {
