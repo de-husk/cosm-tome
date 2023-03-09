@@ -11,7 +11,7 @@ use crate::{clients::client::CosmosClient, signing_key::key::SigningKey};
 
 use super::model::{
     ExecRequest, ExecResponse, InstantiateBatchResponse, InstantiateRequest, MigrateRequest,
-    MigrateResponse, QueryResponse, StoreCodeBatchResponse, StoreCodeRequest,
+    MigrateResponse, QueryRequest, QueryResponse, StoreCodeBatchResponse, StoreCodeRequest,
 };
 use super::{
     error::CosmwasmError,
@@ -179,6 +179,30 @@ impl<T: CosmosClient> CosmTome<T> {
             .client
             .query::<_, QuerySmartContractStateResponse>(
                 req,
+                "/cosmwasm.wasm.v1.Query/SmartContractState",
+            )
+            .await?;
+
+        Ok(QueryResponse { res: res.into() })
+    }
+
+    pub async fn wasm_query_batch<S: Serialize, I>(
+        &self,
+        msgs: &I,
+    ) -> Result<QueryResponse, CosmwasmError>
+    where
+        S: Serialize,
+        I: IntoIterator<Item = QueryRequest<S>>,
+    {
+        let reqs = msgs
+            .into_iter()
+            .map(|msg| msg.to_proto())
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let res = self
+            .client
+            .query::<_, QuerySmartContractStateResponse>(
+                reqs,
                 "/cosmwasm.wasm.v1.Query/SmartContractState",
             )
             .await?;

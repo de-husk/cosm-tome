@@ -304,6 +304,73 @@ impl AsRef<ChainTxResponse> for ExecResponse {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct QueryRequest<S: Serialize> {
+    pub address: Address,
+    pub msg: S,
+}
+
+impl<S: Serialize> QueryRequest<S> {
+    pub fn to_proto(self) -> Result<QueryRequestProto, CosmwasmError> {
+        let payload = serde_json::to_vec(&self.msg).map_err(CosmwasmError::json)?;
+
+        Ok(QueryRequestProto {
+            contract_addr: self.address,
+            msg: payload,
+        })
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct QueryRequestProto {
+    pub contract_addr: Address,
+    pub msg: Vec<u8>,
+}
+
+impl Msg for QueryRequestProto {
+    type Proto = MsgExecuteContract;
+    type Err = CosmwasmError;
+
+    fn from_any(any: &cosmrs::Any) -> Result<Self, Self::Err> {
+        Self::Proto::from_any(any)
+            .map_err(crate::chain::error::ChainError::prost_proto_decoding)?
+            .try_into()
+    }
+
+    fn to_any(&self) -> Result<cosmrs::Any, Self::Err> {
+        self.clone().into_any()
+    }
+
+    fn into_any(self) -> Result<cosmrs::Any, Self::Err> {
+        Ok(self
+            .try_into()?
+            .to_any()
+            .map_err(crate::chain::error::ChainError::prost_proto_encoding)?)
+    }
+}
+
+impl TryFrom<MsgExecuteContract> for QueryRequestProto {
+    type Error = CosmwasmError;
+
+    fn try_from(msg: MsgExecuteContract) -> Result<Self, Self::Error> {
+        Ok(Self {
+            contract_addr: msg.contract.parse()?,
+            msg: msg.msg,
+        })
+    }
+}
+
+impl TryFrom<ExecRequestProto> for QueryRequestProto {
+    type Error = CosmwasmError;
+
+    fn try_from(req: ExecRequestProto) -> Result<Self, Self::Error> {
+        Ok(Self {
+            contract_addr: req.contract_addr.into(),
+            msg: req.msg,
+        })
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
 pub struct QueryResponse {
     pub res: ChainResponse,
