@@ -37,7 +37,11 @@ impl<T: CosmosClient> CosmTome<T> {
         };
 
         let timeout_height = tx_options.timeout_height.unwrap_or_default();
-        let account = self.auth_query_account(sender_addr).await?.account;
+        let mut account = self.auth_query_account(sender_addr).await?.account;
+
+        if let Some(sequence) = &tx_options.sequence {
+            account.sequence = *sequence;
+        }
 
         // even if the user is supplying their own `Fee`, we will simulate the tx to ensure its valid
         let sim_fee = self
