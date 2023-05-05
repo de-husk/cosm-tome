@@ -99,6 +99,11 @@ pub struct TxOptions {
 
     /// An arbitrary memo to be added to the transaction
     pub memo: String,
+
+    /// Adjust account sequence for cases:
+    /// - Chain errors with "account sequence mismatch, expected 2, got 1"
+    /// - multiple batched signed txns, such that you want inclusion within same block
+    pub sequence: Option<u64>,
 }
 
 impl Default for TxOptions {
@@ -107,6 +112,7 @@ impl Default for TxOptions {
             fee: None,
             timeout_height: Some(0),
             memo: "Made with cosm-tome client".to_string(),
+            sequence: None,
         }
     }
 }
