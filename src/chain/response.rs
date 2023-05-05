@@ -1,17 +1,79 @@
+// use std::str::FromStr;
+
+// use cosmrs::{
+//     proto::cosmos::tx::v1beta1::BroadcastTxResponse,
+//     tendermint::{
+//         abci::response::{CheckTx, DeliverTx},
+//         Hash,
+//     },
+// };
+// use tendermint_rpc::endpoint::broadcast::tx_commit;
+
+// use super::error::ChainError;
+
+// pub trait IntoCommitResponse {
+//     fn into_commit_response(self) -> Result<tx_commit::Response, ChainError>;
+// }
+
+// impl IntoCommitResponse for BroadcastTxResponse {
+//     fn into_commit_response(self) -> Result<tx_commit::Response, ChainError> {
+//         let tx_response = self.tx_response.unwrap();
+
+//         let check_tx = CheckTx {
+//             code: tx_response.code,
+//             data: todo!(),
+//             log: todo!(),
+//             info: todo!(),
+//             gas_wanted: todo!(),
+//             gas_used: todo!(),
+//             events: todo!(),
+//             codespace: todo!(),
+//             sender: todo!(),
+//             priority: todo!(),
+//             mempool_error: todo!(),
+//         };
+
+//         let deliver_tx = DeliverTx {
+//             code: todo!(),
+//             data: todo!(),
+//             log: todo!(),
+//             info: todo!(),
+//             gas_wanted: todo!(),
+//             gas_used: todo!(),
+//             events: todo!(),
+//             codespace: todo!(),
+//         };
+
+//         let hash = Hash::from_str(tx_response.txhash.as_str()).unwrap();
+//         let height = tx_response.height;
+
+//         Ok(tx_commit::Response {
+//             check_tx,
+//             deliver_tx,
+//             hash,
+//             height,
+//         })
+//     }
+// }
+
 use cosmrs::proto::{
     cosmos::base::abci::v1beta1::TxResponse as CosmosResponse,
-    tendermint::abci::{Event as ProtoEvent, EventAttribute},
+    tendermint::abci::{Event as ProtoEvent, EventAttribute, TxResult},
 };
-use cosmrs::rpc::abci::{
-    tag::{Key, Tag as TendermintProtoTag, Value},
-    Code as TendermintCode, Event as TendermintEvent,
-};
+// use cosmrs::rpc::abci::{
+//     tag::{Key, Tag as TendermintProtoTag, Value},
+//     Code as TendermintCode, Event as TendermintEvent,
+// };
+
 use cosmrs::rpc::endpoint::{
-    abci_query::AbciQuery,
-    broadcast::tx_async::Response as AsyncTendermintResponse,
-    broadcast::tx_commit::{Response as BlockingTendermintResponse, TxResult},
+    abci_query::AbciQuery, broadcast::tx_async::Response as AsyncTendermintResponse,
+    broadcast::tx_commit::Response as BlockingTendermintResponse,
     broadcast::tx_sync::Response as SyncTendermintResponse,
 };
+use cosmrs::rpc::Code as TendermintCode;
+
+use cosmrs::rpc::event::Event as TendermintEvent;
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -125,27 +187,27 @@ impl From<SyncTendermintResponse> for AsyncChainTxResponse {
 pub struct ChainTxResponse {
     pub res: ChainResponse,
     pub events: Vec<Event>,
-    pub gas_wanted: u64,
-    pub gas_used: u64,
+    pub gas_wanted: i64,
+    pub gas_used: i64,
     pub tx_hash: String,
     pub height: u64,
 }
 
-impl ChainTxResponse {
-    pub fn find_event_tags(&self, event_type: String, key_name: String) -> Vec<&Tag> {
-        let mut events = vec![];
-        for event in &self.events {
-            if event.type_str == event_type {
-                for attr in &event.attributes {
-                    if attr.key == key_name {
-                        events.push(attr);
-                    }
-                }
-            }
-        }
-        events
-    }
-}
+// impl ChainTxResponse {
+//     pub fn find_event_tags(&self, event_type: String, key_name: String) -> Vec<&Tag> {
+//         let mut events = vec![];
+//         for event in &self.events {
+//             if event.type_str == event_type {
+//                 for attr in &event.attributes {
+//                     if attr.key == key_name {
+//                         events.push(attr);
+//                     }
+//                 }
+//             }
+//         }
+//         events
+//     }
+// }
 
 impl AsRef<ChainResponse> for ChainTxResponse {
     fn as_ref(&self) -> &ChainResponse {
@@ -158,7 +220,7 @@ impl From<BlockingTendermintResponse> for ChainTxResponse {
         ChainTxResponse {
             res: ChainResponse {
                 code: res.deliver_tx.code.into(),
-                data: res.deliver_tx.data.map(|d| d.into()),
+                data: Some(res.deliver_tx.data.into()),
                 log: res.deliver_tx.log.to_string(),
             },
             events: res.deliver_tx.events.into_iter().map(Into::into).collect(),
@@ -210,7 +272,7 @@ impl TryFrom<CosmosResponse> for ChainTxResponse {
 pub enum Code {
     #[default]
     Ok,
-    Err(u32),
+    Err(i32),
 }
 
 impl Code {
@@ -225,13 +287,13 @@ impl Code {
         !self.is_ok()
     }
 
-    pub fn value(self) -> u32 {
-        u32::from(self)
+    pub fn value(self) -> i32 {
+        i32::from(self)
     }
 }
 
-impl From<u32> for Code {
-    fn from(value: u32) -> Code {
+impl From<i32> for Code {
+    fn from(value: i32) -> Code {
         match value {
             0 => Code::Ok,
             err => Code::Err(err),
@@ -239,8 +301,8 @@ impl From<u32> for Code {
     }
 }
 
-impl From<Code> for u32 {
-    fn from(code: Code) -> u32 {
+impl From<Code> for i32 {
+    fn from(code: Code) -> i32 {
         match code {
             Code::Ok => 0,
             Code::Err(err) => err,
@@ -268,10 +330,7 @@ impl From<u8> for Code {
 
 impl From<TendermintCode> for Code {
     fn from(value: TendermintCode) -> Code {
-        match value {
-            TendermintCode::Ok => Code::Ok,
-            TendermintCode::Err(err) => Code::Err(err.into()),
-        }
+        Code::Err(value.into())
     }
 }
 
@@ -384,8 +443,8 @@ impl TryFrom<Tag> for TendermintProtoTag {
 impl From<Tag> for EventAttribute {
     fn from(tag: Tag) -> Self {
         Self {
-            key: tag.key.into_bytes().into(),
-            value: tag.value.into_bytes().into(),
+            key: tag.key,
+            value: tag.value,
             index: true,
         }
     }

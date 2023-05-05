@@ -1,7 +1,8 @@
 use crate::chain::error::ChainError;
 use crate::chain::request::PaginationRequest;
-use crate::clients::client::{CosmTome, CosmosClient};
+use crate::clients::client::CosmosClientQuery;
 use crate::modules::auth::model::Account;
+use async_trait::async_trait;
 use cosmrs::proto::cosmos::auth::v1beta1::{
     BaseAccount, QueryAccountRequest, QueryAccountResponse, QueryAccountsRequest,
     QueryAccountsResponse, QueryParamsRequest, QueryParamsResponse,
@@ -11,17 +12,16 @@ use cosmrs::proto::traits::Message;
 use super::error::AccountError;
 use super::model::{AccountResponse, AccountsResponse, Address, ParamsResponse};
 
-impl<T: CosmosClient> CosmTome<T> {
-    pub async fn auth_query_account(
-        &self,
-        address: Address,
-    ) -> Result<AccountResponse, AccountError> {
+impl<T> Auth for T where T: CosmosClientQuery {}
+
+#[async_trait]
+pub trait Auth: CosmosClientQuery + Sized {
+    async fn auth_query_account(&self, address: Address) -> Result<AccountResponse, AccountError> {
         let req = QueryAccountRequest {
             address: address.into(),
         };
 
         let res = self
-            .client
             .query::<_, QueryAccountResponse>(req, "/cosmos.auth.v1beta1.Query/Account")
             .await?;
 
@@ -37,7 +37,7 @@ impl<T: CosmosClient> CosmTome<T> {
         })
     }
 
-    pub async fn auth_query_accounts(
+    async fn auth_query_accounts(
         &self,
         pagination: Option<PaginationRequest>,
     ) -> Result<AccountsResponse, AccountError> {
@@ -46,7 +46,6 @@ impl<T: CosmosClient> CosmTome<T> {
         };
 
         let res = self
-            .client
             .query::<_, QueryAccountsResponse>(req, "/cosmos.auth.v1beta1.Query/Accounts")
             .await?;
 
@@ -66,11 +65,10 @@ impl<T: CosmosClient> CosmTome<T> {
         })
     }
 
-    pub async fn auth_query_params(&self) -> Result<ParamsResponse, AccountError> {
+    async fn auth_query_params(&self) -> Result<ParamsResponse, AccountError> {
         let req = QueryParamsRequest {};
 
         let res = self
-            .client
             .query::<_, QueryParamsResponse>(req, "/cosmos.auth.v1beta1.Query/Params")
             .await?;
 

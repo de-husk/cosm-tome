@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use cosmrs::proto::cosmos::base::query::v1beta1::{PageRequest, PageResponse};
 
+use crate::modules::auth::model::Account;
+
 use super::fee::Fee;
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq, Hash)]
@@ -94,25 +96,23 @@ pub struct TxOptions {
     /// The block height after which this transaction will not be processed by the chain
     pub timeout_height: Option<u64>,
 
-    /// If set will use this fee, instead of the simulated gas price
+    /// If set, this fee will be used, instead of simulating the fee
     pub fee: Option<Fee>,
+
+    /// If set, this fee will be used, instead of querying the account
+    pub account: Option<Account>,
 
     /// An arbitrary memo to be added to the transaction
     pub memo: String,
-
-    /// Adjust account sequence for cases:
-    /// - Chain errors with "account sequence mismatch, expected 2, got 1"
-    /// - multiple batched signed txns, such that you want inclusion within same block
-    pub sequence: Option<u64>,
 }
 
 impl Default for TxOptions {
     fn default() -> Self {
         Self {
             fee: None,
+            account: None,
             timeout_height: Some(0),
             memo: "Made with cosm-tome client".to_string(),
-            sequence: None,
         }
     }
 }

@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use cosmrs::proto::cosmos::bank::v1beta1::{
     QueryAllBalancesRequest, QueryAllBalancesResponse, QueryBalanceRequest, QueryBalanceResponse,
     QueryDenomMetadataRequest, QueryDenomMetadataResponse, QueryDenomsMetadataRequest,
@@ -5,14 +6,16 @@ use cosmrs::proto::cosmos::bank::v1beta1::{
     QuerySpendableBalancesRequest, QuerySpendableBalancesResponse, QuerySupplyOfRequest,
     QuerySupplyOfResponse, QueryTotalSupplyRequest, QueryTotalSupplyResponse,
 };
+use tendermint_rpc::endpoint::broadcast::{tx_async, tx_commit, tx_sync};
 
 use crate::{
     chain::{
         coin::Denom,
         request::{PaginationRequest, TxOptions},
     },
-    clients::client::{CosmTome, CosmosClient},
-    modules::{auth::model::Address, bank::model::SendResponse},
+    clients::client::{CosmosClientAsync, CosmosClientCommit, CosmosClientQuery, CosmosClientSync},
+    config::cfg::ChainConfig,
+    modules::{auth::model::Address, tx::api::Tx},
     signing_key::key::SigningKey,
 };
 
@@ -24,44 +27,12 @@ use super::{
     },
 };
 
-impl<T: CosmosClient> CosmTome<T> {
-    /// Send `amount` of funds from source (`from`) Address to destination (`to`) Address
-    pub async fn bank_send(
-        &self,
-        req: SendRequest,
-        key: &SigningKey,
-        tx_options: &TxOptions,
-    ) -> Result<SendResponse, BankError> {
-        self.bank_send_batch(vec![req], key, tx_options).await
-    }
+impl<T> BankQuery for T where T: CosmosClientQuery {}
 
-    pub async fn bank_send_batch<I>(
-        &self,
-        reqs: I,
-        key: &SigningKey,
-        tx_options: &TxOptions,
-    ) -> Result<SendResponse, BankError>
-    where
-        I: IntoIterator<Item = SendRequest>,
-    {
-        let sender_addr = key.to_addr(&self.cfg.prefix).await?;
-
-        let msgs = reqs
-            .into_iter()
-            .map(Into::into)
-            .collect::<Vec<SendRequestProto>>();
-
-        let tx_raw = self
-            .tx_sign(msgs, Some(sender_addr), key, tx_options)
-            .await?;
-
-        let res = self.tx_broadcast_block(&tx_raw).await?;
-
-        Ok(SendResponse { res })
-    }
-
+#[async_trait]
+pub trait BankQuery: CosmosClientQuery + Sized {
     /// Query the amount of `denom` currently held by an `address`
-    pub async fn bank_query_balance(
+    async fn bank_query_balance(
         &self,
         address: Address,
         denom: Denom,
@@ -72,7 +43,6 @@ impl<T: CosmosClient> CosmTome<T> {
         };
 
         let res = self
-            .client
             .query::<_, QueryBalanceResponse>(req, "/cosmos.bank.v1beta1.Query/Balance")
             .await?;
 
@@ -83,7 +53,7 @@ impl<T: CosmosClient> CosmTome<T> {
     }
 
     /// Query all denom balances held by an `address`
-    pub async fn bank_query_balances(
+    async fn bank_query_balances(
         &self,
         address: Address,
         pagination: Option<PaginationRequest>,
@@ -94,7 +64,6 @@ impl<T: CosmosClient> CosmTome<T> {
         };
 
         let res = self
-            .client
             .query::<_, QueryAllBalancesResponse>(req, "/cosmos.bank.v1beta1.Query/AllBalances")
             .await?;
 
@@ -111,7 +80,7 @@ impl<T: CosmosClient> CosmTome<T> {
     }
 
     /// Get total spendable balance for an `address` (not currently locked away via delegation for example)
-    pub async fn bank_query_spendable_balances(
+    async fn bank_query_spendable_balances(
         &self,
         address: Address,
         pagination: Option<PaginationRequest>,
@@ -122,7 +91,6 @@ impl<T: CosmosClient> CosmTome<T> {
         };
 
         let res = self
-            .client
             .query::<_, QuerySpendableBalancesResponse>(
                 req,
                 "/cosmos.bank.v1beta1.Query/SpendableBalances",
@@ -142,13 +110,12 @@ impl<T: CosmosClient> CosmTome<T> {
     }
 
     /// Query global supply of `denom` for all accounts
-    pub async fn bank_query_supply(&self, denom: Denom) -> Result<BalanceResponse, BankError> {
+    async fn bank_query_supply(&self, denom: Denom) -> Result<BalanceResponse, BankError> {
         let req = QuerySupplyOfRequest {
             denom: denom.into(),
         };
 
         let res = self
-            .client
             .query::<_, QuerySupplyOfResponse>(req, "/cosmos.bank.v1beta1.Query/SupplyOf")
             .await?;
 
@@ -159,7 +126,7 @@ impl<T: CosmosClient> CosmTome<T> {
     }
 
     /// Query global supply of all denoms for all accounts
-    pub async fn bank_query_total_supply(
+    async fn bank_query_total_supply(
         &self,
         pagination: Option<PaginationRequest>,
     ) -> Result<BalancesResponse, BankError> {
@@ -168,7 +135,6 @@ impl<T: CosmosClient> CosmTome<T> {
         };
 
         let res = self
-            .client
             .query::<_, QueryTotalSupplyResponse>(req, "/cosmos.bank.v1beta1.Query/TotalSupply")
             .await?;
 
@@ -185,7 +151,7 @@ impl<T: CosmosClient> CosmTome<T> {
     }
 
     /// Query bank metadata for a single denom
-    pub async fn bank_query_denom_metadata(
+    async fn bank_query_denom_metadata(
         &self,
         denom: Denom,
     ) -> Result<DenomMetadataResponse, BankError> {
@@ -194,7 +160,6 @@ impl<T: CosmosClient> CosmTome<T> {
         };
 
         let res = self
-            .client
             .query::<_, QueryDenomMetadataResponse>(req, "/cosmos.bank.v1beta1.Query/DenomMetadata")
             .await?;
 
@@ -204,7 +169,7 @@ impl<T: CosmosClient> CosmTome<T> {
     }
 
     /// Query bank metadata for all denoms
-    pub async fn bank_query_denoms_metadata(
+    async fn bank_query_denoms_metadata(
         &self,
         pagination: Option<PaginationRequest>,
     ) -> Result<DenomsMetadataResponse, BankError> {
@@ -213,7 +178,6 @@ impl<T: CosmosClient> CosmTome<T> {
         };
 
         let res = self
-            .client
             .query::<_, QueryDenomsMetadataResponse>(
                 req,
                 "/cosmos.bank.v1beta1.Query/DenomsMetadata",
@@ -231,17 +195,127 @@ impl<T: CosmosClient> CosmTome<T> {
     }
 
     /// Query bank module cosmos sdk params
-    pub async fn bank_query_params(&self) -> Result<ParamsResponse, BankError> {
+    async fn bank_query_params(&self) -> Result<ParamsResponse, BankError> {
         let req = QueryParamsRequest {};
 
         let res = self
-            .client
             .query::<_, QueryParamsResponse>(req, "/cosmos.bank.v1beta1.Query/Params")
             .await?;
 
         Ok(ParamsResponse {
             params: res.params.map(TryInto::try_into).transpose()?,
         })
+    }
+}
+
+impl<T> BankCommit for T where T: CosmosClientCommit + Tx {}
+
+#[async_trait]
+pub trait BankCommit: CosmosClientCommit + Tx {
+    /// Send `amount` of funds from source (`from`) Address to destination (`to`) Address
+    async fn bank_send_commit(
+        &self,
+        chain_cfg: &ChainConfig,
+        req: SendRequest,
+        key: &SigningKey,
+        tx_options: &TxOptions,
+    ) -> Result<tx_commit::Response, BankError> {
+        self.bank_send_batch_commit(chain_cfg, vec![req], key, tx_options)
+            .await
+    }
+
+    async fn bank_send_batch_commit<I>(
+        &self,
+        chain_cfg: &ChainConfig,
+        reqs: I,
+        key: &SigningKey,
+        tx_options: &TxOptions,
+    ) -> Result<tx_commit::Response, BankError>
+    where
+        I: IntoIterator<Item = SendRequest> + Send,
+    {
+        let msgs = reqs
+            .into_iter()
+            .map(Into::into)
+            .collect::<Vec<SendRequestProto>>();
+
+        let tx_raw = self.tx_sign(chain_cfg, msgs, key, tx_options).await?;
+
+        Ok(self.broadcast_tx_commit(&tx_raw).await?)
+    }
+}
+
+impl<T> BankSync for T where T: CosmosClientSync + Tx {}
+
+#[async_trait]
+pub trait BankSync: CosmosClientSync + Tx {
+    /// Send `amount` of funds from source (`from`) Address to destination (`to`) Address
+    async fn bank_send_sync(
+        &self,
+        chain_cfg: &ChainConfig,
+        req: SendRequest,
+        key: &SigningKey,
+        tx_options: &TxOptions,
+    ) -> Result<tx_sync::Response, BankError> {
+        self.bank_send_batch_sync(chain_cfg, vec![req], key, tx_options)
+            .await
+    }
+
+    async fn bank_send_batch_sync<I>(
+        &self,
+        chain_cfg: &ChainConfig,
+        reqs: I,
+        key: &SigningKey,
+        tx_options: &TxOptions,
+    ) -> Result<tx_sync::Response, BankError>
+    where
+        I: IntoIterator<Item = SendRequest> + Send,
+    {
+        let msgs = reqs
+            .into_iter()
+            .map(Into::into)
+            .collect::<Vec<SendRequestProto>>();
+
+        let tx_raw = self.tx_sign(chain_cfg, msgs, key, tx_options).await?;
+
+        Ok(self.broadcast_tx_sync(&tx_raw).await?)
+    }
+}
+
+impl<T> BankAsync for T where T: CosmosClientAsync + Tx {}
+
+#[async_trait]
+pub trait BankAsync: CosmosClientAsync + Tx {
+    /// Send `amount` of funds from source (`from`) Address to destination (`to`) Address
+    async fn bank_send_async(
+        &self,
+        chain_cfg: &ChainConfig,
+        req: SendRequest,
+        key: &SigningKey,
+        tx_options: &TxOptions,
+    ) -> Result<tx_async::Response, BankError> {
+        self.bank_send_batch_async(chain_cfg, vec![req], key, tx_options)
+            .await
+    }
+
+    async fn bank_send_batch_async<I>(
+        &self,
+        chain_cfg: &ChainConfig,
+        reqs: I,
+        key: &SigningKey,
+        tx_options: &TxOptions,
+    ) -> Result<tx_async::Response, BankError>
+    where
+        I: IntoIterator<Item = SendRequest> + Send,
+    {
+        let msgs = reqs
+            .into_iter()
+            .map(Into::into)
+            .collect::<Vec<SendRequestProto>>();
+
+        let tx_raw = self.tx_sign(chain_cfg, msgs, key, tx_options).await?;
+
+        Ok(self.broadcast_tx_async(&tx_raw).await?)
     }
 }
 

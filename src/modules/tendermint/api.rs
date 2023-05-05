@@ -1,20 +1,21 @@
+use async_trait::async_trait;
 use cosmrs::proto::cosmos::base::tendermint::v1beta1::{
     GetLatestBlockRequest, GetLatestBlockResponse, GetLatestValidatorSetRequest,
     GetLatestValidatorSetResponse, GetValidatorSetByHeightRequest, GetValidatorSetByHeightResponse,
 };
 
-use crate::{
-    chain::request::PaginationRequest,
-    clients::client::{CosmTome, CosmosClient},
-};
+use crate::{chain::request::PaginationRequest, clients::client::CosmosClientQuery};
 
 use super::{
     error::TendermintError,
     model::{BlockResponse, ValidatorSetResponse},
 };
 
-impl<T: CosmosClient> CosmTome<T> {
-    pub async fn tendermint_query_latest_block(&self) -> Result<BlockResponse, TendermintError> {
+impl<T> TendermintQuery for T where T: CosmosClientQuery {}
+
+#[async_trait]
+pub trait TendermintQuery: CosmosClientQuery + Sized {
+    async fn tendermint_query_latest_block(&self) -> Result<BlockResponse, TendermintError> {
         let req = GetLatestBlockRequest {};
 
         let res = self
@@ -28,7 +29,7 @@ impl<T: CosmosClient> CosmTome<T> {
         res.try_into()
     }
 
-    pub async fn tendermint_query_latest_validator_set(
+    async fn tendermint_query_latest_validator_set(
         &self,
         pagination: Option<PaginationRequest>,
     ) -> Result<ValidatorSetResponse, TendermintError> {
@@ -47,7 +48,7 @@ impl<T: CosmosClient> CosmTome<T> {
         res.try_into()
     }
 
-    pub async fn tendermint_query_validator_set_at_height(
+    async fn tendermint_query_validator_set_at_height(
         &self,
         block_height: u64,
         pagination: Option<PaginationRequest>,

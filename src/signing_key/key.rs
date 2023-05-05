@@ -12,7 +12,6 @@ use serde::{Deserialize, Serialize};
 use crate::chain::error::ChainError;
 use crate::chain::fee::Fee;
 use crate::chain::msg::Msg;
-use crate::config::cfg::ChainConfig;
 use crate::modules::auth::model::{Account, Address};
 use crate::modules::tx::model::RawTx;
 
@@ -22,13 +21,10 @@ pub struct SigningKey {
     pub name: String,
     /// private key associated with `name`
     pub key: Key,
-    /// derivation path associated with a specific chain
-    /// usually "m/44'/118'/0'/0/0"
-    pub derivation_path: String,
 }
 
 impl SigningKey {
-    pub async fn public_key(&self) -> Result<PublicKey, ChainError> {
+    pub async fn public_key(&self, derivation_path: &str) -> Result<PublicKey, ChainError> {
         match &self.key {
             Key::Raw(bytes) => {
                 let key = raw_bytes_to_signing_key(bytes)?;
@@ -36,19 +32,20 @@ impl SigningKey {
             }
 
             Key::Mnemonic(phrase) => {
-                let key = mnemonic_to_signing_key(phrase, &self.derivation_path)?;
+                let key = mnemonic_to_signing_key(phrase, derivation_path)?;
                 Ok(key.public_key())
             }
 
             #[cfg(feature = "os_keyring")]
             Key::Keyring(params) => {
                 let entry = Entry::new(&params.service, &params.key_name);
-                let key = mnemonic_to_signing_key(&entry.get_password()?, &self.derivation_path)?;
+                let key = mnemonic_to_signing_key(&entry.get_password()?, derivation_path)?;
                 Ok(key.public_key())
             }
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn sign(
         &self,
         msgs: Vec<impl Msg + Serialize>,
@@ -56,18 +53,26 @@ impl SigningKey {
         memo: &str,
         account: Account,
         fee: Fee,
-        cfg: &ChainConfig,
+        chain_id: &str,
+        derivation_path: &str,
     ) -> Result<RawTx, ChainError> {
         let public_key = if account.pubkey.is_none() {
-            Some(self.public_key().await?)
+            Some(self.public_key(derivation_path).await?)
         } else {
             account.pubkey
         };
 
         match &self.key {
             Key::Raw(bytes) => {
-                let sign_doc =
-                    build_sign_doc(msgs, timeout_height, memo, &account, fee, public_key, cfg)?;
+                let sign_doc = build_sign_doc(
+                    msgs,
+                    timeout_height,
+                    memo,
+                    &account,
+                    fee,
+                    public_key,
+                    chain_id,
+                )?;
 
                 let key = raw_bytes_to_signing_key(bytes)?;
 
@@ -76,10 +81,17 @@ impl SigningKey {
             }
 
             Key::Mnemonic(phrase) => {
-                let sign_doc =
-                    build_sign_doc(msgs, timeout_height, memo, &account, fee, public_key, cfg)?;
+                let sign_doc = build_sign_doc(
+                    msgs,
+                    timeout_height,
+                    memo,
+                    &account,
+                    fee,
+                    public_key,
+                    chain_id,
+                )?;
 
-                let key = mnemonic_to_signing_key(phrase, &self.derivation_path)?;
+                let key = mnemonic_to_signing_key(phrase, derivation_path)?;
 
                 let raw = sign_doc.sign(&key).map_err(ChainError::crypto)?;
                 Ok(raw.into())
@@ -99,22 +111,25 @@ impl SigningKey {
         }
     }
 
-    pub async fn to_addr(&self, prefix: &str) -> Result<Address, ChainError> {
+    pub async fn to_addr(
+        &self,
+        prefix: &str,
+        derivation_path: &str,
+    ) -> Result<Address, ChainError> {
         let account = self
-            .public_key()
+            .public_key(derivation_path)
             .await?
             .account_id(prefix)
             .map_err(ChainError::crypto)?;
         Ok(account.into())
     }
 
-    pub fn random_mnemonic(key_name: String, derivation_path: String) -> SigningKey {
+    pub fn random_mnemonic(key_name: String) -> SigningKey {
         let mnemonic = bip32::Mnemonic::random(OsRng, Default::default());
 
         SigningKey {
             name: key_name,
             key: Key::Mnemonic(mnemonic.phrase().to_string()),
-            derivation_path,
         }
     }
 }
@@ -162,7 +177,7 @@ fn mnemonic_to_signing_key(
 }
 
 fn raw_bytes_to_signing_key(bytes: &[u8]) -> Result<secp256k1::SigningKey, ChainError> {
-    secp256k1::SigningKey::from_bytes(bytes).map_err(ChainError::crypto)
+    secp256k1::SigningKey::from_slice(bytes).map_err(ChainError::crypto)
 }
 
 fn build_sign_doc(
@@ -172,7 +187,7 @@ fn build_sign_doc(
     account: &Account,
     fee: Fee,
     public_key: Option<PublicKey>,
-    cfg: &ChainConfig,
+    chain_id: &str,
 ) -> Result<SignDoc, ChainError> {
     let timeout: Height = timeout_height.try_into()?;
 
@@ -194,8 +209,8 @@ fn build_sign_doc(
     SignDoc::new(
         &tx,
         &auth_info,
-        &cfg.chain_id.parse().map_err(|_| ChainError::ChainId {
-            chain_id: cfg.chain_id.to_string(),
+        &chain_id.parse().map_err(|_| ChainError::ChainId {
+            chain_id: chain_id.to_string(),
         })?,
         account.account_number,
     )

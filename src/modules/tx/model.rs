@@ -19,6 +19,7 @@ use super::error::TxError;
 )]
 #[repr(i32)]
 pub enum BroadcastMode {
+    Block = 1,
     /// BROADCAST_MODE_SYNC defines a tx broadcasting mode where the client waits for a CheckTx execution response only.
     Sync = 2,
     /// BROADCAST_MODE_ASYNC defines a tx broadcasting mode where the client returns immediately.
@@ -28,6 +29,7 @@ pub enum BroadcastMode {
 impl AsRef<str> for BroadcastMode {
     fn as_ref(&self) -> &str {
         match self {
+            BroadcastMode::Block => "BROADCAST_MODE_BLOCK",
             BroadcastMode::Sync => "BROADCAST_MODE_SYNC",
             BroadcastMode::Async => "BROADCAST_MODE_ASYNC",
         }
@@ -39,6 +41,7 @@ impl TryFrom<i32> for BroadcastMode {
 
     fn try_from(v: i32) -> Result<Self, Self::Error> {
         match v {
+            x if x == BroadcastMode::Block as i32 => Ok(BroadcastMode::Block),
             x if x == BroadcastMode::Sync as i32 => Ok(BroadcastMode::Sync),
             x if x == BroadcastMode::Async as i32 => Ok(BroadcastMode::Async),
             _ => Err(TxError::BroadcastMode { i: v }),
@@ -49,6 +52,7 @@ impl TryFrom<i32> for BroadcastMode {
 impl From<BroadcastMode> for ProtoBroadcastMode {
     fn from(mode: BroadcastMode) -> Self {
         match mode {
+            BroadcastMode::Block => ProtoBroadcastMode::Block,
             BroadcastMode::Sync => ProtoBroadcastMode::Sync,
             BroadcastMode::Async => ProtoBroadcastMode::Async,
         }
@@ -60,10 +64,10 @@ impl TryFrom<ProtoBroadcastMode> for BroadcastMode {
 
     fn try_from(mode: ProtoBroadcastMode) -> Result<Self, Self::Error> {
         match mode {
+            ProtoBroadcastMode::Block => Ok(BroadcastMode::Block),
             ProtoBroadcastMode::Sync => Ok(BroadcastMode::Sync),
             ProtoBroadcastMode::Async => Ok(BroadcastMode::Async),
             ProtoBroadcastMode::Unspecified => Err(TxError::BroadcastMode { i: 0 }),
-            ProtoBroadcastMode::Block => Err(TxError::BroadcastMode { i: 1 }),
         }
     }
 }

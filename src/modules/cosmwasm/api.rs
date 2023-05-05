@@ -1,13 +1,14 @@
+use async_trait::async_trait;
 use serde::Serialize;
 
 use crate::chain::request::TxOptions;
-use crate::clients::client::CosmTome;
+use crate::clients::client::CosmosClientQuery;
 use cosmrs::proto::cosmwasm::wasm::v1::{
     QuerySmartContractStateRequest, QuerySmartContractStateResponse,
 };
 
 use crate::modules::auth::model::Address;
-use crate::{clients::client::CosmosClient, signing_key::key::SigningKey};
+use crate::signing_key::key::SigningKey;
 
 use super::model::{
     ExecRequest, ExecResponse, InstantiateBatchResponse, InstantiateRequest, MigrateRequest,
@@ -18,8 +19,11 @@ use super::{
     model::{InstantiateResponse, StoreCodeResponse},
 };
 
-impl<T: CosmosClient> CosmTome<T> {
-    pub async fn wasm_store(
+impl<T> CosmwasmQuery for T where T: CosmosClientQuery {}
+
+#[async_trait]
+pub trait CosmwasmQuery: CosmosClientQuery + Sized {
+    async fn wasm_store(
         &self,
         req: StoreCodeRequest,
         key: &SigningKey,
@@ -33,7 +37,7 @@ impl<T: CosmosClient> CosmTome<T> {
         })
     }
 
-    pub async fn wasm_store_batch<I>(
+    async fn wasm_store_batch<I>(
         &self,
         reqs: I,
         key: &SigningKey,

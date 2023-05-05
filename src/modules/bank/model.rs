@@ -10,9 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::chain::coin::Denom;
 use crate::chain::msg::Msg;
 use crate::{
-    chain::{
-        coin::Coin, error::ChainError, request::PaginationResponse, response::ChainTxResponse,
-    },
+    chain::{coin::Coin, error::ChainError, request::PaginationResponse},
     modules::auth::model::Address,
 };
 
@@ -64,6 +62,8 @@ pub struct DenomMetadata {
     ///
     /// Since: cosmos-sdk 0.43
     pub symbol: String,
+    pub uri: String,
+    pub uri_hash: String,
 }
 
 impl TryFrom<Metadata> for DenomMetadata {
@@ -81,6 +81,8 @@ impl TryFrom<Metadata> for DenomMetadata {
             display: meta.display,
             name: meta.name,
             symbol: meta.symbol,
+            uri: meta.uri,
+            uri_hash: meta.uri_hash,
         })
     }
 }
@@ -94,6 +96,8 @@ impl From<DenomMetadata> for Metadata {
             display: meta.display,
             name: meta.name,
             symbol: meta.symbol,
+            uri: meta.uri,
+            uri_hash: meta.uri_hash,
         }
     }
 }
@@ -260,7 +264,7 @@ impl TryFrom<SendRequest> for MsgSend {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
-pub struct SendResponse {
-    pub res: ChainTxResponse,
-}
+// #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
+// pub struct SendResponse {
+//     pub res: ChainTxResponse,
+// }

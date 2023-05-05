@@ -13,10 +13,6 @@ pub struct ChainConfig {
     pub chain_id: String,
     /// example: "m/44'/118'/0'/0/0"
     pub derivation_path: String,
-    /// example: "https://terra-testnet-rpc.polkachu.com"
-    pub rpc_endpoint: Option<String>,
-    /// example: "https://terra-testnet-grpc.polkachu.com:11790"
-    pub grpc_endpoint: Option<String>,
     /// example: 0.025
     pub gas_price: f64,
     /// example: 1.3

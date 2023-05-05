@@ -9,7 +9,7 @@ pub use cosmrs::rpc::Error as TendermintRPCError;
 pub use cosmrs::tendermint::Error as TendermintError;
 pub use tonic::transport::Error as CosmosGRPCError;
 
-use super::response::ChainResponse;
+// use super::response::ChainResponse;
 
 #[derive(Error, Debug)]
 pub enum ChainError {
@@ -47,8 +47,25 @@ pub enum ChainError {
     #[error(transparent)]
     Keyring(#[from] KeyringError),
 
-    #[error("CosmosSDK error: {res:?}")]
-    CosmosSdk { res: ChainResponse },
+    #[error("Tonic error {0}")]
+    Tonic(#[from] tonic::Status),
+
+    // #[error("CosmosSDK error: {res:?}")]
+    // CosmosSdk { res: ChainResponse },
+    #[error("TxSync error: {res:?}")]
+    TxCommit {
+        res: tendermint_rpc::endpoint::broadcast::tx_commit::Response,
+    },
+
+    #[error("TxSync error: {res:?}")]
+    TxSync {
+        res: tendermint_rpc::endpoint::broadcast::tx_sync::Response,
+    },
+
+    #[error("TxAsync error: {res:?}")]
+    TxAsync {
+        res: tendermint_rpc::endpoint::broadcast::tx_async::Response,
+    },
 
     #[error("Tendermint error")]
     Tendermint(#[from] TendermintError),
@@ -87,9 +104,9 @@ impl ChainError {
         }
     }
 
-    pub(crate) fn tonic_status(e: tonic::Status) -> ChainError {
-        ChainError::CosmosSdk { res: e.into() }
-    }
+    // pub(crate) fn tonic_status(e: tonic::Status) -> ChainError {
+    //     e.into()
+    // }
 }
 
 #[derive(Error, Debug)]
