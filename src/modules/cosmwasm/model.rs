@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::chain::error::DeserializeError;
 use crate::chain::msg::Msg;
+use crate::modules;
 use crate::{
     chain::{
         coin::Coin,
@@ -417,7 +418,7 @@ impl From<AccessConfig> for cosmrs::cosmwasm::AccessConfig {
     fn from(config: AccessConfig) -> Self {
         Self {
             permission: config.permission.into(),
-            address: config.account.into(),
+            addresses: vec![config.account.into()],
         }
     }
 }
@@ -426,7 +427,7 @@ impl From<cosmrs::cosmwasm::AccessConfig> for AccessConfig {
     fn from(config: cosmrs::cosmwasm::AccessConfig) -> Self {
         Self {
             permission: config.permission.into(),
-            account: config.address.into(),
+            account: modules::auth::model::Address::from(config.addresses[0].clone()),
         }
     }
 }
@@ -435,7 +436,8 @@ impl From<AccessConfig> for ProtoAccessConfig {
     fn from(config: AccessConfig) -> Self {
         Self {
             permission: config.permission as i32,
-            address: config.account.into(),
+            address: config.account.clone().into(),
+            addresses: vec![config.account.into()],
         }
     }
 }
@@ -509,6 +511,7 @@ impl From<ProtoAccessType> for AccessType {
             ProtoAccessType::Nobody => AccessType::Nobody,
             ProtoAccessType::OnlyAddress => AccessType::OnlyAddress,
             ProtoAccessType::Everybody => AccessType::Everybody,
+            ProtoAccessType::AnyOfAddresses => AccessType::Unspecified, // not implemented
         }
     }
 }

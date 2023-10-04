@@ -39,6 +39,7 @@ impl From<BlockResponse> for GetLatestBlockResponse {
         Self {
             block_id: Some(res.id),
             block: Some(res.block),
+            sdk_block: None,
         }
     }
 }

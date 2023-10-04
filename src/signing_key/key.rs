@@ -162,7 +162,7 @@ fn mnemonic_to_signing_key(
 }
 
 fn raw_bytes_to_signing_key(bytes: &[u8]) -> Result<secp256k1::SigningKey, ChainError> {
-    secp256k1::SigningKey::from_bytes(bytes).map_err(ChainError::crypto)
+    secp256k1::SigningKey::from_slice(bytes).map_err(ChainError::crypto)
 }
 
 fn build_sign_doc(

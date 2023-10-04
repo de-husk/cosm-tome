@@ -94,6 +94,8 @@ impl From<DenomMetadata> for Metadata {
             display: meta.display,
             name: meta.name,
             symbol: meta.symbol,
+            uri: "".to_string(),      //not implemented
+            uri_hash: "".to_string(), //not implemented
         }
     }
 }

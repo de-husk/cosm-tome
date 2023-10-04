@@ -8,11 +8,12 @@ use tonic::codec::ProstCodec;
 use cosmrs::proto::traits::Message;
 
 use crate::chain::fee::GasInfo;
+use crate::chain::request;
 use crate::chain::response::{AsyncChainTxResponse, ChainResponse, Code};
 use crate::chain::{error::ChainError, response::ChainTxResponse};
 use crate::modules::tx::model::{BroadcastMode, RawTx};
 
-use super::client::CosmosClient;
+use super::client::{self, CosmosClient};
 
 #[derive(Clone, Debug)]
 pub struct CosmosgRPC {
@@ -74,7 +75,11 @@ impl CosmosClient for CosmosgRPC {
 
     #[allow(deprecated)]
     async fn simulate_tx(&self, tx: &RawTx) -> Result<GasInfo, ChainError> {
-        let mut client = ServiceClient::connect(self.grpc_endpoint.clone()).await?;
+        let mut client = ServiceClient::connect(self.grpc_endpoint.clone())
+            .await
+            .map_err(|err| ChainError::Crypto {
+                message: err.to_string(),
+            })?;
 
         let req = SimulateRequest {
             tx: None,
@@ -103,7 +108,11 @@ impl CosmosClient for CosmosgRPC {
         tx: &RawTx,
         mode: BroadcastMode,
     ) -> Result<AsyncChainTxResponse, ChainError> {
-        let mut client = ServiceClient::connect(self.grpc_endpoint.clone()).await?;
+        let mut client = ServiceClient::connect(self.grpc_endpoint.clone())
+            .await
+            .map_err(|err| ChainError::Crypto {
+                message: err.to_string(),
+            })?;
 
         let req = BroadcastTxRequest {
             tx_bytes: tx.to_bytes()?,
@@ -113,7 +122,9 @@ impl CosmosClient for CosmosgRPC {
         let res = client
             .broadcast_tx(req)
             .await
-            .map_err(ChainError::tonic_status)?
+            .map_err(|err| ChainError::Crypto {
+                message: err.to_string(),
+            })?
             .into_inner();
 
         let res: AsyncChainTxResponse = res.tx_response.unwrap().into();
@@ -126,7 +137,11 @@ impl CosmosClient for CosmosgRPC {
     }
 
     async fn broadcast_tx_block(&self, tx: &RawTx) -> Result<ChainTxResponse, ChainError> {
-        let mut client = ServiceClient::connect(self.grpc_endpoint.clone()).await?;
+        let mut client = ServiceClient::connect(self.grpc_endpoint.clone())
+            .await
+            .map_err(|err| ChainError::Crypto {
+                message: err.to_string(),
+            })?;
 
         let req = BroadcastTxRequest {
             tx_bytes: tx.to_bytes()?,
@@ -136,7 +151,9 @@ impl CosmosClient for CosmosgRPC {
         let res = client
             .broadcast_tx(req)
             .await
-            .map_err(ChainError::tonic_status)?
+            .map_err(|err| ChainError::Crypto {
+                message: err.to_string(),
+            })?
             .into_inner();
 
         let res: ChainTxResponse = res.tx_response.unwrap().try_into()?;
